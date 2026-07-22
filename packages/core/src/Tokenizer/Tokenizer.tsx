@@ -37,6 +37,7 @@ import {
   inputStatusBorderStyles,
   inputStatusHoverShadowStyles,
   inputStatusFocusWithinStyles,
+  type FieldStatusVariant,
 } from '../Field';
 import {Token} from '../Token';
 import {renderIconSlot, type IconType} from '../Icon';
@@ -110,6 +111,13 @@ export interface TokenizerProps<T extends SearchableItem> extends Omit<
   isOptional?: boolean;
   /** Validation status. */
   status?: InputStatus;
+  /**
+   * How the status message is placed relative to the input.
+   * - 'attached': message overlaps directly below the input (bordered treatment)
+   * - 'detached': message floats below as a separate element with spacing
+   * @default 'attached'
+   */
+  statusVariant?: FieldStatusVariant;
   /**
    * Icon to display at the start of the input.
    * Accepts a ReactNode (e.g. `<Icon icon={SearchIcon} />`) or an SVG icon component directly.
@@ -369,6 +377,7 @@ export function Tokenizer<T extends SearchableItem>({
   isRequired = false,
   isOptional = false,
   status,
+  statusVariant = 'attached',
   startIcon,
   labelTooltip,
   searchSource,
@@ -879,6 +888,7 @@ export function Tokenizer<T extends SearchableItem>({
             }
           : undefined
       }
+      statusVariant={statusVariant}
       labelTooltip={labelTooltip}
       width={width}
       xstyle={xstyle}
