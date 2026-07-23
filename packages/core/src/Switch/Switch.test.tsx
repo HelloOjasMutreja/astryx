@@ -126,6 +126,23 @@ describe('Switch', () => {
     ).toBeInTheDocument();
   });
 
+  it('toggles when clicking on the description', async () => {
+    const user = userEvent.setup();
+    const handleChange = vi.fn();
+    render(
+      <Switch
+        label="Dark mode"
+        description="Switch to a darker color scheme"
+        value={false}
+        onChange={handleChange}
+      />,
+    );
+
+    const description = screen.getByText('Switch to a darker color scheme');
+    await user.click(description);
+    expect(handleChange).toHaveBeenCalledWith(true, expect.any(Object));
+  });
+
   it('associates description with switch via aria-describedby', () => {
     render(
       <Switch

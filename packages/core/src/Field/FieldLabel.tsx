@@ -31,8 +31,14 @@ import {themeProps} from '../utils/themeProps';
 const styles = stylex.create({
   label: {
     display: 'flex',
+    // Wraps so `description` (which forces itself onto its own line via
+    // flexBasis below) stacks under the label content while staying inside
+    // the same <label> element — required so clicking the description
+    // activates the control, the same as clicking the label text does.
+    flexWrap: 'wrap',
     alignItems: 'center',
-    gap: spacingVars['--spacing-1'],
+    columnGap: spacingVars['--spacing-1'],
+    rowGap: spacingVars['--spacing-0-5'],
     fontFamily: typographyVars['--font-family-body'],
     fontSize: typeScaleVars['--text-label-size'],
     lineHeight: typeScaleVars['--text-label-leading'],
@@ -66,6 +72,9 @@ const styles = stylex.create({
     color: colorVars['--color-text-secondary'],
   },
   description: {
+    // Forces itself onto its own flex line below the label content — see
+    // the `flexWrap` comment on `label` above.
+    flexBasis: '100%',
     fontFamily: typographyVars['--font-family-body'],
     fontSize: typeScaleVars['--text-supporting-size'],
     lineHeight: typeScaleVars['--text-supporting-leading'],
@@ -200,23 +209,21 @@ export function FieldLabel({
   );
 
   return (
-    <>
-      <LabelElement
-        ref={ref}
-        id={labelID}
-        // `htmlFor` only applies to a real `<label>` associating with a single
-        // control; a group label (span) has no `htmlFor`.
-        htmlFor={isGroupLabel ? undefined : inputID}
-        {...mergeProps(
-          themeProps('field-label'),
-          stylex.props(
-            styles.label,
-            isDisabled && styles.labelDisabled,
-            isLabelHidden && styles.srOnly,
-          ),
-        )}>
-        {labelContent}
-      </LabelElement>
+    <LabelElement
+      ref={ref}
+      id={labelID}
+      // `htmlFor` only applies to a real `<label>` associating with a single
+      // control; a group label (span) has no `htmlFor`.
+      htmlFor={isGroupLabel ? undefined : inputID}
+      {...mergeProps(
+        themeProps('field-label'),
+        stylex.props(
+          styles.label,
+          isDisabled && styles.labelDisabled,
+          isLabelHidden && styles.srOnly,
+        ),
+      )}>
+      {labelContent}
       {description && (
         <span
           id={descriptionID}
@@ -224,7 +231,7 @@ export function FieldLabel({
           {description}
         </span>
       )}
-    </>
+    </LabelElement>
   );
 }
 

@@ -44,6 +44,19 @@ describe('FieldLabel', () => {
     expect(screen.queryByText(/Required/)).not.toBeInTheDocument();
   });
 
+  it('nests the description inside the label element', () => {
+    render(
+      <FieldLabel
+        label="Subscribe"
+        inputID="subscribe-input"
+        description="Receive weekly updates"
+      />,
+    );
+    const label = screen.getByText('Subscribe').closest('label');
+    const description = screen.getByText('Receive weekly updates');
+    expect(label).toContainElement(description);
+  });
+
   it('renders labelIcon when provided', () => {
     render(
       <FieldLabel

@@ -124,6 +124,23 @@ describe('CheckboxInput', () => {
     expect(screen.getByText('Receive weekly updates')).toBeInTheDocument();
   });
 
+  it('toggles when clicking on the description', async () => {
+    const user = userEvent.setup();
+    const handleChange = vi.fn();
+    render(
+      <CheckboxInput
+        label="Subscribe"
+        description="Receive weekly updates"
+        value={false}
+        onChange={handleChange}
+      />,
+    );
+
+    const description = screen.getByText('Receive weekly updates');
+    await user.click(description);
+    expect(handleChange).toHaveBeenCalledWith(true, expect.any(Object));
+  });
+
   it('associates description with checkbox via aria-describedby', () => {
     render(
       <CheckboxInput
