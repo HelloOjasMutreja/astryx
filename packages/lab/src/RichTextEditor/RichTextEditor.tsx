@@ -245,10 +245,9 @@ export interface RichTextEditorProps
  * @example
  * ```
  * import {RichTextEditor} from '@astryxdesign/lab';
- *
  * <RichTextEditor
  *   label="Notes"
- *   placeholder="Write something…"
+ *   placeholder="Write something..."
  *   onChange={state => save(JSON.stringify(state.toJSON()))}
  * />
  * ```
