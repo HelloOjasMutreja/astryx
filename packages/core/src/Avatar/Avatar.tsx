@@ -84,6 +84,11 @@ type AvatarNumericSize =
 export type AvatarSize = AvatarNamedSize | AvatarNumericSize;
 
 /**
+ * Avatar shape options
+ */
+export type AvatarShape = 'circle' | 'rounded' | 'square';
+
+/**
  * Resolves named sizes to their numeric pixel values
  */
 export function resolveSize(size: AvatarSize): number {
@@ -103,6 +108,18 @@ export function resolveSize(size: AvatarSize): number {
       return 128;
   }
 }
+
+const shapeStyles = stylex.create({
+  circle: {
+    borderRadius: radiusVars['--radius-full'],
+  },
+  rounded: {
+    borderRadius: radiusVars['--radius-element'],
+  },
+  square: {
+    borderRadius: 0,
+  },
+});
 
 /**
  * Base styles for the avatar
@@ -124,7 +141,6 @@ const styles = stylex.create({
     justifyContent: 'center',
     width: '100%',
     height: '100%',
-    borderRadius: radiusVars['--radius-full'],
     overflow: 'hidden',
     userSelect: 'none',
   },
@@ -190,7 +206,7 @@ const dynamicStyles = stylex.create({
   fontSize: (size: number) => ({
     fontSize: `${size * INITIALS_FONT_SIZE_RATIO}px`,
   }),
-  statusPosition: (size: number) => ({
+  statusPositionCircle: (size: number) => ({
     bottom: size * CIRCLE_EDGE_OFFSET_RATIO,
     insetInlineEnd: size * CIRCLE_EDGE_OFFSET_RATIO,
     // `insetInlineEnd` anchors to the right edge in LTR / left in RTL, so the
@@ -200,13 +216,17 @@ const dynamicStyles = stylex.create({
       ':is([dir="rtl"] *)': 'translate(-50%, 50%)',
     },
   }),
+  statusPositionCorner: {
+    bottom: 0,
+    right: 0,
+    transform: 'translate(25%, 25%)',
+  },
 });
 
 const BORDER_WIDTH = 2;
 
 const groupStyles = stylex.create({
   ring: {
-    borderRadius: radiusVars['--radius-full'],
     borderWidth: BORDER_WIDTH,
     borderStyle: 'solid',
     borderColor: colorVars['--color-background-surface'],
@@ -259,6 +279,14 @@ export interface AvatarProps extends BaseProps<HTMLDivElement> {
    * @default 'md'
    */
   size?: AvatarSize;
+  /**
+   * Shape variant of the avatar.
+   * - 'circle': Full circle (default)
+   * - 'rounded': Rounded square
+   * - 'square': Sharp square
+   * @default 'circle'
+   */
+  shape?: AvatarShape;
   /**
    * The primary image source for the avatar.
    */
@@ -415,6 +443,7 @@ export function Avatar({
   fallbackSrc,
   name,
   size = 'md',
+  shape = 'circle',
   src,
   status,
   tooltip = true,
@@ -535,7 +564,7 @@ export function Avatar({
   // The inner visuals are identical across the static and interactive variants.
   const visualContent = (
     <>
-      <div {...stylex.props(styles.content)}>
+      <div {...stylex.props(styles.content, shapeStyles[shape])}>
         {showImage && (
           <img
             src={src}
@@ -578,7 +607,9 @@ export function Avatar({
         <div
           {...stylex.props(
             styles.status,
-            dynamicStyles.statusPosition(numericSize),
+            shape === 'circle'
+              ? dynamicStyles.statusPositionCircle(numericSize)
+              : dynamicStyles.statusPositionCorner,
           )}>
           {status}
         </div>
@@ -591,7 +622,7 @@ export function Avatar({
   // tooltip tab-stop focus ring all live here so the interactive
   // `<a>`/`<button>` and the static `<div>` carry the exact same box.
   const rootStylexProps = mergeProps(
-    themeProps('avatar', {size: resolvedSize}),
+    themeProps('avatar', {size: resolvedSize, shape}),
     focusOutlineProps.focusVisible(
       styles.wrapper,
       dynamicStyles.size(numericSize),
