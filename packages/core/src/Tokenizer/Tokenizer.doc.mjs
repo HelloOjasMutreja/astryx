@@ -192,7 +192,14 @@ export const docs = {
     {
       name: 'handleRef',
       type: 'React.Ref<TokenizerHandle>',
-      description: 'Imperative handle for focus() and blur() control.',
+      description:
+        'Imperative handle exposing focusInput(), focusFirstToken(), focusLastToken(), clearInput(), and selectAll().',
+    },
+    {
+      name: 'width',
+      type: 'SizeValue',
+      description:
+        'Width of the field (number = pixels, string used as-is, e.g. "100%"). Sizes the whole field (label, control, and status) so they stay aligned.',
     },
     {
       name: 'xstyle',
