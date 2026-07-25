@@ -1230,11 +1230,11 @@ function StatusToken({
 }: PowerSearchTokenProps) {
   const value = filter.value.type === 'enum' ? filter.value.value : '?';
   const colors: Record<string, string> = {
-    open: '#22c55e',
-    in_progress: '#3b82f6',
-    review: '#a855f7',
-    closed: '#6b7280',
-    blocked: '#ef4444',
+    open: '#0D8626',
+    in_progress: '#0064E0',
+    review: '#5B08D8',
+    closed: '#4B5563',
+    blocked: '#C41C1C',
   };
   return (
     <Token
@@ -1331,7 +1331,7 @@ export const WithCustomComponents: Story = {
           onChange={newFilters => setFilters([...newFilters])}
           components={customComponents}
         />
-        <p style={{marginTop: 16, fontSize: 13, color: '#666'}}>
+        <p style={{marginTop: 16, fontSize: 13, color: '#4E606F'}}>
           <strong>Custom overrides:</strong> Status tokens show colored text
           (custom Token). Integer fields use a range slider editor (custom
           Editor).
