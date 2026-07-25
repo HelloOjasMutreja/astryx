@@ -91,6 +91,11 @@ export const docs = {
       default: "'info'",
     },
     {
+      name: 'padding',
+      type: 'SpacingStep',
+      description: 'Internal padding of the dialog using the spacing scale step.',
+    },
+    {
       name: 'isInline',
       type: 'boolean',
       description: 'Renders dialog content inline without the <dialog> element, backdrop, or modal behavior. For documentation previews and showcases only.',
