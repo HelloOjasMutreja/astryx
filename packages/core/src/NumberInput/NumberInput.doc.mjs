@@ -146,6 +146,12 @@ export const docs = {
       description: 'HTML autocomplete attribute.',
     },
     {
+      name: 'width',
+      type: 'SizeValue',
+      description:
+        'Width of the field (number = pixels, string used as-is, e.g. "100%"). Sizes the whole field (label, control, and status) so they stay aligned.',
+    },
+    {
       name: 'hasAutoFocus',
       type: 'boolean',
       description: 'Whether to focus the input on mount.',

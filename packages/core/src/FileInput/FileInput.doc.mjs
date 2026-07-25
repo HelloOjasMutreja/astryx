@@ -132,6 +132,12 @@ export const docs = {
       description:
         'Tooltip text displayed in an info icon at the end of the label.',
     },
+    {
+      name: 'width',
+      type: 'SizeValue',
+      description:
+        'Width of the field (number = pixels, string used as-is, e.g. "100%"). Sizes the whole field (label, control, and status) so they stay aligned.',
+    },
   ],
   theming: {
     targets: [

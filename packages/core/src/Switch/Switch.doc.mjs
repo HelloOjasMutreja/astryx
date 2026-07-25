@@ -129,6 +129,12 @@ export const docs = {
         'Spacing behavior between label and switch. "hug" places them next to each other; "spread" pushes them to opposite ends of the container (full width). "default" is a deprecated alias for "hug".',
       default: "'hug'",
     },
+    {
+      name: 'width',
+      type: 'SizeValue',
+      description:
+        'Width of the field (number = pixels, string used as-is, e.g. "100%"). Sizes the whole field (label, control, and status) so they stay aligned.',
+    },
   ],
   theming: {
     targets: [
