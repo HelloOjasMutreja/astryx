@@ -76,6 +76,12 @@ export const docs = {
           default: "'balanced'",
         },
         {
+          name: 'indicatorPosition',
+          type: "'separated' | 'on-track'",
+          description: 'Position of step indicators relative to the connector track.',
+          default: "'separated'",
+        },
+        {
           name: 'xstyle',
           type: 'StyleXStyles',
           description: 'StyleX styles for layout customization. Must be a stylex.create() value.',
