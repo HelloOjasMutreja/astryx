@@ -138,8 +138,8 @@ export const docs = {
   ],
   theming: {
     targets: [
-      {className: 'astryx-switch', states: ['checked', 'disabled']},
-      {className: 'astryx-switch-thumb', states: ['checked']},
+      {className: 'astryx-switch', visualProps: ['size'], states: ['checked', 'disabled']},
+      {className: 'astryx-switch-thumb', visualProps: ['size'], states: ['checked']},
       {className: 'astryx-switch-field', visualProps: ['labelPosition', 'labelSpacing']},
     ],
   },
@@ -284,8 +284,8 @@ export const docsZh = {
   ],
   theming: {
     targets: [
-      {className: 'astryx-switch', states: ['checked', 'disabled']},
-      {className: 'astryx-switch-thumb', states: ['checked']},
+      {className: 'astryx-switch', visualProps: ['size'], states: ['checked', 'disabled']},
+      {className: 'astryx-switch-thumb', visualProps: ['size'], states: ['checked']},
       {className: 'astryx-switch-field', visualProps: ['labelPosition', 'labelSpacing']},
     ],
   },
