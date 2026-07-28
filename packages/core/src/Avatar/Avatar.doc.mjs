@@ -28,7 +28,7 @@ export const docs = {
   },
   theming: {
     targets: [
-      {className: 'astryx-avatar', visualProps: ['size']},
+      {className: 'astryx-avatar', visualProps: ['size', 'shape']},
       {className: 'astryx-avatar-fallback', visualProps: ['size']},
       {className: 'astryx-avatar-status-dot', visualProps: ['variant']},
       {className: 'astryx-avatar-status-dot-glyph', visualProps: ['shape']},
