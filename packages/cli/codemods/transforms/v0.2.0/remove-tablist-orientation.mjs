@@ -37,6 +37,11 @@ const IMPORT_SOURCES = new Set([
 /** Component names that had the orientation prop. */
 const TARGET_IMPORTED_NAMES = new Set(['TabList']);
 
+/**
+ * @param {import('../../../types/codemod').AstryxCodemodFile} file
+ * @param {import('../../../types/codemod').CodemodTransformApi} api
+ * @returns {string | null | undefined}
+ */
 export default function transformer(file, api) {
   const j = api.jscodeshift;
   const root = j(file.source);
@@ -44,7 +49,7 @@ export default function transformer(file, api) {
 
   // Track alias-aware local names for the target components.
   const targetLocals = new Set();
-  root.find(j.ImportDeclaration).forEach((path) => {
+  root.find(j.ImportDeclaration).forEach((/** @type {any} */ path) => {
     if (!IMPORT_SOURCES.has(path.node.source.value)) return;
     for (const spec of path.node.specifiers ?? []) {
       if (
@@ -59,14 +64,14 @@ export default function transformer(file, api) {
   if (targetLocals.size === 0) return undefined;
 
   // Remove every `orientation` JSX attribute from target component elements.
-  root.find(j.JSXOpeningElement).forEach((path) => {
+  root.find(j.JSXOpeningElement).forEach((/** @type {any} */ path) => {
     const name = path.node.name;
     const componentName = name.type === 'JSXIdentifier' ? name.name : null;
     if (!componentName || !targetLocals.has(componentName)) return;
 
     const before = path.node.attributes.length;
     path.node.attributes = path.node.attributes.filter(
-      (attr) =>
+      (/** @type {any} */ attr) =>
         !(attr.type === 'JSXAttribute' && attr.name?.name === 'orientation'),
     );
     if (path.node.attributes.length !== before) {
