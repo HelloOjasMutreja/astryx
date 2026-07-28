@@ -4,7 +4,7 @@
  * @file Codemod: Remove TabList orientation prop
  * @see https://github.com/facebook/astryx/issues/4231
  *
- * As of v0.1.9, TabList no longer accepts an `orientation` prop. The prop
+ * As of v0.2.0, TabList no longer accepts an `orientation` prop. The prop
  * was misleading: it only drove the keyboard-hint badge, not a real vertical
  * layout. Arrow-key navigation already accepted both horizontal and vertical
  * axes unconditionally (orientation: 'both' in useListFocus), so passing
@@ -19,7 +19,7 @@
 export const meta = {
   title: 'Remove TabList orientation prop (misleading no-op)',
   description:
-    'The `orientation` prop is removed from TabList in v0.1.9. It did not ' +
+    'The `orientation` prop is removed from TabList in v0.2.0. It did not ' +
     'produce a vertical tab strip; it only changed the keyboard-hint arrow ' +
     'badge. Arrow navigation already accepted both axes regardless. This ' +
     'codemod strips the prop from all <TabList> usages. No behavior change.',
