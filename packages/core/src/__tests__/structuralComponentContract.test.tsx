@@ -6,16 +6,15 @@ import {docs as CodeBlockDocs} from '../CodeBlock/CodeBlock.doc.mjs';
 import {docs as StackDocs} from '../Stack/Stack.doc.mjs';
 import {docs as ToolbarDocs} from '../Toolbar/Toolbar.doc.mjs';
 
-function getProps(docs: Record<string, unknown>): {name: string}[] {
-  return (
-    (docs.props as {name: string}[]) ||
-    (
-      docs.components as {
-        props: {name: string}[];
-      }[]
-    )?.[0]?.props ||
-    []
-  );
+// `docs` is the ComponentDoc union (single vs multi component); narrow it
+// for structural access to either the top-level props or the first
+// sub-component's props.
+function getProps(docs: unknown): {name: string}[] {
+  const doc = docs as {
+    props?: {name: string}[];
+    components?: {props?: {name: string}[]}[];
+  };
+  return doc.props || doc.components?.[0]?.props || [];
 }
 
 describe('Structural Component API Contract Drift (#4163)', () => {
