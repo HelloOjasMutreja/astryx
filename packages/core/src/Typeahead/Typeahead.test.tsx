@@ -198,6 +198,45 @@ describe('BaseTypeahead', () => {
     });
   });
 
+  describe('IME composition guard (#4828)', () => {
+    it('does not select the highlighted result on a composing Enter', async () => {
+      const onChange = vi.fn();
+      render(
+        <BaseTypeahead
+          searchSource={fruitSource}
+          value={null}
+          onChange={onChange}
+          debounceMs={0}
+        />,
+      );
+      const input = screen.getByRole('combobox');
+      fireEvent.change(input, {target: {value: 'App'}});
+      await waitFor(() => {
+        expect(input).toHaveAttribute('aria-expanded', 'true');
+      });
+
+      // The browser fires this composing keydown for the Enter that commits
+      // an IME candidate (isComposing: true, or legacy keyCode 229) before
+      // compositionend writes the pending syllable into the input. Without
+      // the guard this both selects the highlighted result AND clears the
+      // input via handleSelect, so the syllable that compositionend then
+      // writes lands in an emptied field instead of being part of the word.
+      fireEvent.keyDown(input, {key: 'Enter', isComposing: true});
+      expect(onChange).not.toHaveBeenCalled();
+      expect(input).toHaveValue('App');
+
+      fireEvent.keyDown(input, {key: 'Enter', keyCode: 229});
+      expect(onChange).not.toHaveBeenCalled();
+      expect(input).toHaveValue('App');
+
+      // A real, non-composing Enter still selects normally.
+      fireEvent.keyDown(input, {key: 'Enter'});
+      expect(onChange).toHaveBeenCalledWith(
+        expect.objectContaining({label: 'Apple'}),
+      );
+    });
+  });
+
   it('disables input when isDisabled', () => {
     render(
       <BaseTypeahead
@@ -1038,11 +1077,16 @@ describe('Typeahead disabledMessage', () => {
   });
 });
 
-
 describe('Typeahead statusVariant forwarding', () => {
   it('defaults to attached (status renders with data-variant="attached")', () => {
     const {container} = render(
-      <Typeahead label="Fruit" searchSource={fruitSource} value={null} onChange={() => {}} status={{type: 'error', message: 'Required'}} />,
+      <Typeahead
+        label="Fruit"
+        searchSource={fruitSource}
+        value={null}
+        onChange={() => {}}
+        status={{type: 'error', message: 'Required'}}
+      />,
     );
     expect(container.querySelector('.astryx-field-status')).toHaveAttribute(
       'data-variant',
@@ -1052,7 +1096,14 @@ describe('Typeahead statusVariant forwarding', () => {
 
   it('forwards statusVariant="detached" to the underlying Field status', () => {
     const {container} = render(
-      <Typeahead label="Fruit" searchSource={fruitSource} value={null} onChange={() => {}} status={{type: 'error', message: 'Required'}} statusVariant="detached" />,
+      <Typeahead
+        label="Fruit"
+        searchSource={fruitSource}
+        value={null}
+        onChange={() => {}}
+        status={{type: 'error', message: 'Required'}}
+        statusVariant="detached"
+      />,
     );
     expect(container.querySelector('.astryx-field-status')).toHaveAttribute(
       'data-variant',
