@@ -183,6 +183,27 @@ describe('SideNav', () => {
     expect(nav.children).toHaveLength(1);
   });
 
+  it('centers footer content when collapsed, matching children alignment', () => {
+    render(
+      <SideNav
+        data-testid="nav"
+        collapsible={{isCollapsed: true, hasButton: false}}
+        footer={<span data-testid="footer-content">F</span>}>
+        <span data-testid="children-content">C</span>
+      </SideNav>,
+    );
+
+    // scrollableCollapsed (wraps children) and stickyBottomCollapsed (wraps
+    // footer) are structurally parallel collapsed-rail containers; both
+    // must center their content the same way, or full-width footer content
+    // stretches to the collapsed rail's width instead of centering.
+    const childrenContainer =
+      screen.getByTestId('children-content').parentElement;
+    const footerContainer = screen.getByTestId('footer-content').parentElement;
+    expect(getComputedStyle(childrenContainer!).alignItems).toBe('center');
+    expect(getComputedStyle(footerContainer!).alignItems).toBe('center');
+  });
+
   it('fires a consumer onClick on the collapse button in addition to toggling', async () => {
     const user = userEvent.setup();
     const onClick = vi.fn();
