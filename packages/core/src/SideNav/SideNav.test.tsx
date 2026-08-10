@@ -592,6 +592,31 @@ describe('SideNavHeading collapsed', () => {
       expect(menu!.contains(button)).toBe(false);
     }
   });
+
+  it('anchors the collapsed icon-only trigger so the popover positions against it', () => {
+    render(
+      <CollapsedWrapper>
+        <SideNavHeading
+          heading="My App"
+          icon={<span data-testid="app-icon">🏠</span>}
+          menu={<div role="menuitem">Alpha</div>}
+        />
+      </CollapsedWrapper>,
+    );
+    const trigger = screen.getByRole('button', {name: 'My App'});
+    // The same element also carries the collapsed-item Tooltip's own
+    // anchor-name (via anchorRef={collapsedItemRef}), so a plain
+    // non-empty check would pass even when the menu popover itself isn't
+    // anchored. Assert the popover's own position-anchor id specifically
+    // appears in the trigger's (possibly multi-value) anchor-name list.
+    const popoverEl = document.querySelector('[popover]') as HTMLElement;
+    const anchorId = popoverEl.style.positionAnchor;
+    expect(anchorId).not.toBe('');
+    const triggerAnchorNames = trigger.style.anchorName
+      .split(',')
+      .map(s => s.trim());
+    expect(triggerAnchorNames).toContain(anchorId);
+  });
 });
 
 // =============================================================================
