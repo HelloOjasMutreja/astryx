@@ -171,9 +171,6 @@ const styles = stylex.create({
   status: {
     position: 'absolute',
   },
-  // Visible focus ring for the name-tooltip tab stop, matching the repo-wide
-  // focus-visible outline treatment (see Timestamp, Token, Thumbnail). Only
-  // applied when a tooltip is active so keyboard users can reveal it.
   // Reset the intrinsic styling of the interactive element (<a>/<button>) so it
   // is a transparent, correctly-sized wrapper around the avatar visuals. The
   // element carries the focus-visible accent ring for keyboard users.
@@ -220,8 +217,14 @@ const dynamicStyles = stylex.create({
   }),
   statusPositionCorner: {
     bottom: 0,
-    right: 0,
-    transform: 'translate(25%, 25%)',
+    insetInlineEnd: 0,
+    // Same RTL mirroring as statusPositionCircle above: insetInlineEnd
+    // anchors to the right edge in LTR / left in RTL, so the outward push
+    // must flip sign too.
+    transform: {
+      default: 'translate(25%, 25%)',
+      ':is([dir="rtl"] *)': 'translate(-25%, 25%)',
+    },
   },
 });
 
