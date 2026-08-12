@@ -1450,7 +1450,6 @@ export function ListInput<T>({
           aria-labelledby={labelID}
           aria-describedby={joinIDs(descriptionID, statusID)}
           aria-disabled={isDisabled || undefined}
-          aria-required={isRequired || undefined}
           aria-busy={isLoading || undefined}
           {...mergeProps(
             themeProps('list-input', {

@@ -217,6 +217,16 @@ describe('ListInput', () => {
     );
   });
 
+  it('never renders aria-required on the group, even when isRequired is set (#4958)', () => {
+    // aria-required is not an allowed attribute on role="group" (axe
+    // aria-allowed-attr, impact critical). The requirement is already
+    // surfaced visibly through Field's Required indicator.
+    renderListInput({isRequired: true});
+
+    const group = screen.getByRole('group');
+    expect(group).not.toHaveAttribute('aria-required');
+  });
+
   it('renders a compact centered EmptyState and keeps Add available', () => {
     const {container} = renderListInput({value: []});
 
