@@ -380,12 +380,4 @@ export const docsDense = {
       },
     ],
   },
-  theming: {
-    targets: [
-      {
-        className: 'astryx-list-input',
-        visualProps: ['state', 'reorderable'],
-      },
-    ],
-  },
 };
