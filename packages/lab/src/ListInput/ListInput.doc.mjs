@@ -241,6 +241,14 @@ export const docs = {
       },
     ],
   },
+  theming: {
+    targets: [
+      {
+        className: 'astryx-list-input',
+        visualProps: ['state', 'reorderable'],
+      },
+    ],
+  },
   examples: [
     {
       label: 'Controlled guest list',
@@ -369,6 +377,14 @@ export const docsDense = {
         guidance: false,
         description:
           'Block removal to enforce a minimum; report a list error instead.',
+      },
+    ],
+  },
+  theming: {
+    targets: [
+      {
+        className: 'astryx-list-input',
+        visualProps: ['state', 'reorderable'],
       },
     ],
   },
