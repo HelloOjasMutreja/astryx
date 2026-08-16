@@ -12,7 +12,7 @@
  * - /packages/core/src/Calendar/hooks/index.ts
  */
 
-import {useMemo} from 'react';
+import {use, useMemo} from 'react';
 import type {DayOfWeek, ISODateString} from '../../utils/dateTypes';
 import {
   type PlainDate,
@@ -21,6 +21,7 @@ import {
   plainDateDayOfWeek,
   plainDateAddDays,
 } from '../../utils/plainDate';
+import {InternationalizationContext} from '../../i18n';
 
 /**
  * Represents a single day in the calendar grid.
@@ -84,6 +85,7 @@ export function useCalendarDays(
   options: UseCalendarDaysOptions,
 ): UseCalendarDaysReturn {
   const {year, month, weekStartsOn = 0, hasVariableRowCount = false} = options;
+  const {locale} = use(InternationalizationContext);
 
   // Calculate grid structure
   const gridInfo = useMemo(() => {
@@ -108,15 +110,35 @@ export function useCalendarDays(
     };
   }, [year, month, weekStartsOn, hasVariableRowCount]);
 
-  // Generate day names
+  // Generate day names. English keeps its existing two-letter abbreviations
+  // (Su, Mo, Tu...) as a deliberate compact convention for the default
+  // locale; Intl's 'short' format gives three letters (Sun, Mon...), which
+  // would be a visual regression for the overwhelmingly common case. Every
+  // other locale uses its own short weekday form via Intl.DateTimeFormat,
+  // the only correct-by-construction source for non-English abbreviations —
+  // previously this array was hardcoded English regardless of the ambient
+  // InternationalizationProvider locale.
   const dayNames = useMemo(() => {
-    const names = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+    const baseLanguage = new Intl.Locale(locale).language;
+    const names =
+      baseLanguage === 'en'
+        ? ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
+        : (() => {
+            const formatter = new Intl.DateTimeFormat(locale, {
+              weekday: 'short',
+            });
+            // January 1, 2023 was a Sunday (UTC, so the weekday can't shift
+            // with the host timezone).
+            return Array.from({length: 7}, (_, i) =>
+              formatter.format(new Date(Date.UTC(2023, 0, 1 + i))),
+            );
+          })();
     const rotated: string[] = [];
     for (let i = 0; i < 7; i++) {
       rotated.push(names[(i + weekStartsOn) % 7]);
     }
     return rotated;
-  }, [weekStartsOn]);
+  }, [locale, weekStartsOn]);
 
   // Generate days array
   const days = useMemo(() => {

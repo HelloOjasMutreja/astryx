@@ -21,6 +21,7 @@ import {calendarStyles} from './styles';
 import {defineTheme} from '../theme/defineTheme';
 import {generateThemeCSS} from '../theme/generateThemeRules';
 import {__resetLiveRegionsForTest} from '../hooks/useAnnounce';
+import {InternationalizationProvider} from '../i18n';
 
 function generateThemeTestCSS(theme: Parameters<typeof generateThemeCSS>[0]) {
   const {prose, component} = generateThemeCSS(theme);
@@ -976,6 +977,19 @@ describe('Calendar', () => {
     // Verify they contain day name abbreviations
     const dayNames = columnHeaders.map(h => h.textContent);
     expect(dayNames).toEqual(['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']);
+  });
+
+  it('localizes day name headers to the InternationalizationProvider locale (#5074)', () => {
+    render(
+      <InternationalizationProvider locale="es-ES">
+        <Calendar focusDate="2026-01-01" />
+      </InternationalizationProvider>,
+    );
+
+    const columnHeaders = screen.getAllByRole('columnheader');
+    const dayNames = columnHeaders.map(h => h.textContent);
+    // Spanish short weekdays (Sunday-first, matching the default weekStartsOn).
+    expect(dayNames).toEqual(['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb']);
   });
 
   it('button inside gridcell does not duplicate role="gridcell"', () => {
