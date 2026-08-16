@@ -16,7 +16,14 @@
  * - /packages/cli/assets/templates/blocks/components/DateRangeInput/ (showcase blocks)
  */
 
-import {useId, useCallback, useMemo, useOptimistic, useTransition} from 'react';
+import {
+  use,
+  useId,
+  useCallback,
+  useMemo,
+  useOptimistic,
+  useTransition,
+} from 'react';
 import * as stylex from '@stylexjs/stylex';
 import {
   plainDateFromISO,
@@ -65,7 +72,8 @@ import {useResolvedRequired} from '../hooks/useResolvedRequired';
 import {themeProps} from '../utils/themeProps';
 import {focusOutlineStyles} from '../utils/focusOutline.stylex';
 import {stableClassName} from '../naming';
-import {useTranslator} from '../i18n';
+import {useTranslator, InternationalizationContext} from '../i18n';
+import type {Locale} from '../i18n/types';
 
 export type {DateRange} from '../Calendar';
 
@@ -185,7 +193,7 @@ const sizeStyles = stylex.create({
   },
 });
 
-function formatRangeDisplay(range: DateRange | null): string {
+function formatRangeDisplay(range: DateRange | null, locale?: Locale): string {
   if (!range) {
     return '';
   }
@@ -195,7 +203,7 @@ function formatRangeDisplay(range: DateRange | null): string {
   const sameYear = start.year === end.year && start.year === currentYear;
 
   const fmt = sameYear ? DATE_FORMAT_SHORT : DATE_FORMAT_SHORT_WITH_YEAR;
-  return `${plainDateFormat(start, fmt)} – ${plainDateFormat(end, fmt)}`;
+  return `${plainDateFormat(start, fmt, locale)} – ${plainDateFormat(end, fmt, locale)}`;
 }
 
 function isRangeEqual(a: DateRange | null, b: DateRange | null): boolean {
@@ -475,6 +483,7 @@ export function DateRangeInput({
 }: DateRangeInputProps) {
   const t = useTranslator();
   const isEffectivelyRequired = useResolvedRequired({isRequired, isOptional});
+  const {locale} = use(InternationalizationContext);
   const placeholder =
     placeholderFromProps ?? t('@astryx.dateRangeInput.placeholder');
   const size = useSize(sizeProp, 'md');
@@ -521,8 +530,8 @@ export function DateRangeInput({
       .join(' ') || undefined;
 
   const displayValue = useMemo(
-    () => formatRangeDisplay(optimisticValue),
-    [optimisticValue],
+    () => formatRangeDisplay(optimisticValue, locale),
+    [optimisticValue, locale],
   );
 
   const popover = usePopover({

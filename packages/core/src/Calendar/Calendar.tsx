@@ -18,6 +18,7 @@
  */
 
 import {
+  use,
   useState,
   useMemo,
   useCallback,
@@ -86,7 +87,7 @@ import type {
 } from '../utils/dateTypes';
 import {normalizeDayOfWeek} from '../utils/dateTypes';
 import {themeProps} from '../utils/themeProps';
-import {useTranslator} from '../i18n';
+import {useTranslator, InternationalizationContext} from '../i18n';
 
 /** Imperative handle for Calendar handleRef */
 
@@ -220,6 +221,7 @@ export type CalendarProps = CalendarSingleProps | CalendarRangeProps;
  */
 export function Calendar({ref, ...props}: CalendarProps) {
   const t = useTranslator();
+  const {locale} = use(InternationalizationContext);
   const {
     handleRef,
     mode = 'single',
@@ -327,12 +329,12 @@ export function Calendar({ref, ...props}: CalendarProps) {
   // Format month header
   const monthYearLabel = useMemo(() => {
     if (numberOfMonths === 1) {
-      return plainDateFormat(visibleMonths[0], DATE_FORMAT_MONTH_YEAR);
+      return plainDateFormat(visibleMonths[0], DATE_FORMAT_MONTH_YEAR, locale);
     }
     return visibleMonths
-      .map(m => plainDateFormat(m, DATE_FORMAT_MONTH_YEAR))
+      .map(m => plainDateFormat(m, DATE_FORMAT_MONTH_YEAR, locale))
       .join(' – ');
-  }, [visibleMonths, numberOfMonths]);
+  }, [visibleMonths, numberOfMonths, locale]);
 
   // Announce the newly visible month to screen readers whenever it changes.
   // The visible month label (`<span>`) carries no live semantics, so paging the
@@ -440,7 +442,7 @@ export function Calendar({ref, ...props}: CalendarProps) {
           setRangeSelectionStart(iso);
           announce(
             t('@astryx.calendar.rangeStartAnnounce', {
-              date: plainDateFormat(date, DATE_FORMAT_WITH_WEEKDAY),
+              date: plainDateFormat(date, DATE_FORMAT_WITH_WEEKDAY, locale),
             }),
           );
         } else {
@@ -486,17 +488,19 @@ export function Calendar({ref, ...props}: CalendarProps) {
               start: plainDateFormat(
                 plainDateFromISO(start),
                 DATE_FORMAT_WITH_WEEKDAY,
+                locale,
               ),
               end: plainDateFormat(
                 plainDateFromISO(end),
                 DATE_FORMAT_WITH_WEEKDAY,
+                locale,
               ),
             }),
           );
         }
       }
     },
-    [mode, onChange, rangeSelectionStart, announce, t],
+    [mode, onChange, rangeSelectionStart, announce, t, locale],
   );
 
   return (
@@ -645,6 +649,7 @@ function MonthGrid({
   pendingFocus,
   onPendingFocusHandled,
 }: MonthGridProps) {
+  const {locale} = use(InternationalizationContext);
   const year = month.year;
 
   // Use hooks for days generation and constraints
@@ -866,8 +871,8 @@ function MonthGrid({
 
   // Month label for announcements
   const monthLabel = useMemo(() => {
-    return plainDateFormat(month, DATE_FORMAT_MONTH_YEAR);
-  }, [month]);
+    return plainDateFormat(month, DATE_FORMAT_MONTH_YEAR, locale);
+  }, [month, locale]);
 
   return (
     <div {...stylex.props(monthGridStyles.monthGrid)}>
@@ -1025,6 +1030,7 @@ function DayCell({
   onDayHover,
 }: DayCellProps) {
   const t = useTranslator();
+  const {locale} = use(InternationalizationContext);
   const {date, isOutside, dayNumber} = day;
 
   if (isOutside && !hasOutsideDays) {
@@ -1070,7 +1076,7 @@ function DayCell({
   // params rather than string concatenation. A mid-flight first pick (where
   // rangeStart === rangeEnd) reads as "range start" only; a completed one-day
   // range reads as both start and end.
-  const dateLabel = plainDateFormat(date, DATE_FORMAT_WITH_WEEKDAY);
+  const dateLabel = plainDateFormat(date, DATE_FORMAT_WITH_WEEKDAY, locale);
   const dayLabel = state.isSelected
     ? t('@astryx.calendar.daySelected', {date: dateLabel})
     : state.isRangeStart && state.isRangeEnd
