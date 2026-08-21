@@ -62,7 +62,7 @@ describe('search leaf — exact keyword phrase outranks incidental token matches
   it('surfaces Outline for its own declared keyword "table of contents", ranked first', async () => {
     // Before the fix, "table" and "contents" each separately matched dozens
     // of unrelated Table-related templates by coincidence, and their
-    // combined token-sum score outranked Outline's single exact match —
+    // combined token-sum score outranked Outline's single exact match,
     // pushing it out of the results entirely at the default limit.
     const r = await search('table of contents', {cwd});
     expect(r.data.results[0]?.name).toBe('Outline');
