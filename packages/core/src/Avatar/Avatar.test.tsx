@@ -297,6 +297,38 @@ describe('Avatar', () => {
     expect(screen.getByTestId('group-avatar')).toBeInTheDocument();
   });
 
+  it("an AvatarGroup's shape overrides an individual Avatar's own shape prop, matching how size already works", () => {
+    render(
+      <AvatarGroup shape="square">
+        <Avatar name="Alice" shape="rounded" data-testid="group-avatar" />
+      </AvatarGroup>,
+    );
+    expect(screen.getByTestId('group-avatar')).toHaveAttribute(
+      'data-shape',
+      'square',
+    );
+  });
+
+  it("an Avatar's own shape prop applies outside any AvatarGroup", () => {
+    render(<Avatar name="Ana" shape="rounded" data-testid="solo-avatar" />);
+    expect(screen.getByTestId('solo-avatar')).toHaveAttribute(
+      'data-shape',
+      'rounded',
+    );
+  });
+
+  it('defaults to circle shape inside an AvatarGroup with no explicit shape', () => {
+    render(
+      <AvatarGroup>
+        <Avatar name="Alice" shape="square" data-testid="group-avatar" />
+      </AvatarGroup>,
+    );
+    expect(screen.getByTestId('group-avatar')).toHaveAttribute(
+      'data-shape',
+      'circle',
+    );
+  });
+
   // --- Name tooltip (tooltip?: string | boolean) ---
   describe('name tooltip', () => {
     const originalShowPopover = HTMLElement.prototype.showPopover;

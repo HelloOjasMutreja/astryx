@@ -109,15 +109,22 @@ export function resolveSize(size: AvatarSize): number {
   }
 }
 
-const shapeStyles = stylex.create({
+// Sets one local custom property rather than `borderRadius` directly, so
+// every clipping/ring surface that needs the shape's radius (the wrapper,
+// the interactive focus ring, the content div that actually clips via
+// `overflow: hidden`, and AvatarGroupOverflow's "+N" indicator) reads the
+// same value instead of each hardcoding its own borderRadius independently.
+// A theme override only has to reach this one property, not fight the
+// per-surface StyleX class order to change the shape everywhere at once.
+export const shapeStyles = stylex.create({
   circle: {
-    borderRadius: radiusVars['--radius-full'],
+    '--_avatar-radius': radiusVars['--radius-full'],
   },
   rounded: {
-    borderRadius: radiusVars['--radius-element'],
+    '--_avatar-radius': radiusVars['--radius-element'],
   },
   square: {
-    borderRadius: radiusVars['--radius-none'],
+    '--_avatar-radius': radiusVars['--radius-none'],
   },
 });
 
@@ -130,10 +137,10 @@ const styles = stylex.create({
     position: 'relative',
     display: 'inline-flex',
     flexShrink: 0,
-    // The wrapper carries the avatar's box as well as its radius, so a theme
-    // rule on the `.astryx-avatar` target reaches both: the size the `size`
-    // visual prop selects on is set here, and the content below fills it.
-    borderRadius: radiusVars['--radius-full'],
+    // Reads the shape variant's `--_avatar-radius` (set by `shapeStyles`
+    // below) rather than a hardcoded value, so `shape` actually changes the
+    // wrapper's own radius instead of only the content div's clip.
+    borderRadius: 'var(--_avatar-radius)',
   },
   content: {
     display: 'flex',
@@ -143,6 +150,12 @@ const styles = stylex.create({
     height: '100%',
     overflow: 'hidden',
     userSelect: 'none',
+    // The content div is the one that actually clips (via overflow: hidden
+    // above), so it needs its own border-radius matching the wrapper's.
+    // It inherits `--_avatar-radius` from the wrapper, since custom
+    // properties cascade to descendants even though border-radius itself
+    // does not.
+    borderRadius: 'var(--_avatar-radius)',
   },
   image: {
     width: '100%',
@@ -185,8 +198,9 @@ const styles = stylex.create({
     font: 'inherit',
     textDecoration: 'none',
     cursor: 'pointer',
-    // Match the avatar's circular shape so the focus ring hugs it.
-    borderRadius: radiusVars['--radius-full'],
+    // Match the avatar's shape (via `--_avatar-radius`) so the focus ring
+    // hugs it, whichever shape variant is in effect.
+    borderRadius: 'var(--_avatar-radius)',
   },
 });
 
@@ -502,6 +516,7 @@ export function Avatar({
   const isDecorative = !accessibleName;
   const avatarGroup = useAvatarGroup();
   const resolvedSize = avatarGroup?.size ?? size;
+  const resolvedShape = avatarGroup?.shape ?? shape;
   const numericSize = useMemo(() => resolveSize(resolvedSize), [resolvedSize]);
 
   // Resolve the tooltip content:
@@ -569,7 +584,7 @@ export function Avatar({
   // The inner visuals are identical across the static and interactive variants.
   const visualContent = (
     <>
-      <div {...stylex.props(styles.content, shapeStyles[shape])}>
+      <div {...stylex.props(styles.content)}>
         {showImage && (
           <img
             src={src}
@@ -612,7 +627,7 @@ export function Avatar({
         <div
           {...stylex.props(
             styles.status,
-            shape === 'circle'
+            resolvedShape === 'circle'
               ? dynamicStyles.statusPositionCircle(numericSize)
               : dynamicStyles.statusPositionCorner,
           )}>
@@ -627,7 +642,7 @@ export function Avatar({
   // tooltip tab-stop focus ring all live here so the interactive
   // `<a>`/`<button>` and the static `<div>` carry the exact same box.
   const rootStylexProps = mergeProps(
-    themeProps('avatar', {size: resolvedSize, shape}),
+    themeProps('avatar', {size: resolvedSize, shape: resolvedShape}),
     focusOutlineProps.focusVisible(
       styles.wrapper,
       dynamicStyles.size(numericSize),
@@ -635,7 +650,7 @@ export function Avatar({
       avatarGroup && groupStyles.ring,
       avatarGroup && groupStyles.overlap,
       avatarGroup && groupDynamicStyles.overlap(-avatarGroup.overlap),
-      shapeStyles[shape],
+      shapeStyles[resolvedShape],
       xstyle,
     ),
     className,
