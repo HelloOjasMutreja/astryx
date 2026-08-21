@@ -173,10 +173,8 @@ const styles = stylex.create({
     // `.astryx-avatar-fallback` class target (font size through its size
     // variant, `.astryx-avatar-fallback.<size>`), so the defaults here are
     // plain values with no internal-var seam. See Avatar.doc.mjs theming.
-    // `--color-text-primary` (not `-secondary`) is the default so initials
-    // meet WCAG AA contrast against the neutral background.
     backgroundColor: colorVars['--color-neutral'],
-    color: colorVars['--color-text-primary'],
+    color: colorVars['--color-text-secondary'],
     fontFamily: typographyVars['--font-family-body'],
     fontWeight: fontWeightVars['--font-weight-medium'],
     textTransform: 'uppercase',
