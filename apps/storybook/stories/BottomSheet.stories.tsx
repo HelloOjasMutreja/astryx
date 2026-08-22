@@ -2,7 +2,7 @@
 
 import type {Meta, StoryObj} from '@storybook/react';
 import {useState} from 'react';
-import {BottomSheet} from '@astryxdesign/lab';
+import {BottomSheet} from '@astryxdesign/core/BottomSheet';
 import {Button} from '@astryxdesign/core/Button';
 import {Divider} from '@astryxdesign/core/Divider';
 import {Heading} from '@astryxdesign/core/Heading';
@@ -14,7 +14,7 @@ import {TextArea} from '@astryxdesign/core/TextArea';
 import {CheckboxInput} from '@astryxdesign/core/CheckboxInput';
 
 const meta: Meta<typeof BottomSheet> = {
-  title: 'Lab/BottomSheet',
+  title: 'Core/BottomSheet',
   component: BottomSheet,
   tags: ['autodocs'],
   parameters: {
@@ -80,14 +80,14 @@ function MobileKeyboardCommentForm({onPost}: {onPost: () => void}) {
       <Text type="supporting" color="secondary">
         Keep the Tall sheet fully expanded, then focus fields near the
         beginning, middle, and end. The outer sheet remains stationary while its
-        body scrolls each control above the mobile keyboard. Keyboard
-        accommodation is not provided at shorter snap points.
+        body scrolls each control above the mobile keyboard. Drag it down to the
+        half-height stop and the accommodation stops — only a fully expanded
+        Tall sheet provides it — then drag back up and it resumes.
       </Text>
       <Text type="supporting" color="secondary">
         Move the sheet with its handle or close it with Post comment to verify
         that sheet travel and closing dismiss the keyboard.
       </Text>
-      <Button label="Close sheet" onClick={onPost} />
       <Divider />
       <TextInput
         label="Title"
@@ -219,8 +219,9 @@ export const TallSheet: Story = {
           <Section padding={4}>
             <VStack gap={3}>
               <Text type="supporting" color="secondary">
-                Drag the handle to resize between snap points; flick down to
-                dismiss or up to expand. Escape also dismisses.
+                A Tall sheet fills most of the viewport and scrolls its content.
+                It has no snap points, so a drag springs back; flick down to
+                dismiss. Escape also dismisses.
               </Text>
               <Divider />
               {Array.from({length: 12}, (_, i) => (
@@ -228,6 +229,80 @@ export const TallSheet: Story = {
                   <Text type="label">Place {i + 1}</Text>
                   <Text type="supporting" color="secondary">
                     {(0.2 + i * 0.3).toFixed(1)} mi away
+                  </Text>
+                </VStack>
+              ))}
+            </VStack>
+          </Section>
+        </BottomSheet>
+      </>
+    );
+  },
+};
+
+export const SnapPoints: Story = {
+  render: () => {
+    const [isOpen, setIsOpen] = useState(false);
+    return (
+      <>
+        <Button label="Open nearby places" onClick={() => setIsOpen(true)} />
+        <BottomSheet
+          isOpen={isOpen}
+          onOpenChange={setIsOpen}
+          label="Nearby places"
+          height="tall"
+          snapPoints={[0.5]}>
+          <Section padding={4}>
+            <VStack gap={3}>
+              <Text type="supporting" color="secondary">
+                One extra stop, at half the viewport. Drag the handle down to
+                collapse the sheet, then back up — the list keeps its scroll
+                position. Flick down to dismiss.
+              </Text>
+              <Divider />
+              {Array.from({length: 12}, (_, i) => (
+                <VStack key={i} gap={1}>
+                  <Text type="label">Place {i + 1}</Text>
+                  <Text type="supporting" color="secondary">
+                    {(0.2 + i * 0.3).toFixed(1)} mi away
+                  </Text>
+                </VStack>
+              ))}
+            </VStack>
+          </Section>
+        </BottomSheet>
+      </>
+    );
+  },
+};
+
+export const SnapPointsWithPeek: Story = {
+  render: () => {
+    const [isOpen, setIsOpen] = useState(false);
+    return (
+      <>
+        <Button label="Open route" onClick={() => setIsOpen(true)} />
+        <BottomSheet
+          isOpen={isOpen}
+          onOpenChange={setIsOpen}
+          label="Route"
+          height="tall"
+          snapPoints={['96px', '50%']}>
+          <Section padding={4}>
+            <VStack gap={3}>
+              <Heading level={3}>To Ferry Building</Heading>
+              <Text type="supporting" color="secondary">
+                Three stops: full, half the viewport, and a 96px peek. The half
+                stop is a working surface — content laid out, scrim full. The
+                peek is a glance: the sheet slides away rather than reflowing
+                into a sliver, and the scrim thins.
+              </Text>
+              <Divider />
+              {Array.from({length: 10}, (_, i) => (
+                <VStack key={i} gap={1}>
+                  <Text type="label">Step {i + 1}</Text>
+                  <Text type="supporting" color="secondary">
+                    Continue for {(0.1 + i * 0.4).toFixed(1)} mi
                   </Text>
                 </VStack>
               ))}
@@ -338,7 +413,10 @@ export const HugHeightWithLongContent: Story = {
               <Heading level={3}>Release notes</Heading>
               <Text type="supporting" color="secondary">
                 The sheet hugs its content until it reaches 92% of the viewport,
-                then the content scrolls within the sheet.
+                then the content scrolls within the sheet. Drag it to a snap
+                point and the scrolling area resizes to the height you can
+                actually see — except at the shortest peek, which slides below
+                the viewport at full height rather than reflowing to a sliver.
               </Text>
               <Divider />
               {Array.from({length: 12}, (_, i) => (
@@ -407,7 +485,8 @@ export const MobileKeyboard: Story = {
           isOpen={isOpen}
           onOpenChange={setIsOpen}
           label="Add a comment"
-          height="tall">
+          height="tall"
+          snapPoints={[0.5]}>
           <Section padding={4}>
             <MobileKeyboardCommentForm onPost={() => setIsOpen(false)} />
           </Section>
