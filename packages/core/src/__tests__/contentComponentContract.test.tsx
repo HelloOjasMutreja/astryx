@@ -17,11 +17,18 @@ function getProps(docs: unknown): {name: string}[] {
 }
 
 describe('Content Component API Contract Drift (#4163)', () => {
-  it('documents Citation title, url, icon source properties', () => {
+  it('documents Citation source, number, variant properties', () => {
+    // title/url/icon are fields of the `source` object (CitationProps is
+    // {source, number, variant}), not top-level props in their own right —
+    // documenting them as props would tell a reader to pass
+    // <Citation title="..." /> and nothing would render.
     const props = getProps(CitationDocs).map(p => p.name);
-    expect(props).toContain('title');
-    expect(props).toContain('url');
-    expect(props).toContain('icon');
+    expect(props).toContain('source');
+    expect(props).toContain('number');
+    expect(props).toContain('variant');
+    expect(props).not.toContain('title');
+    expect(props).not.toContain('url');
+    expect(props).not.toContain('icon');
   });
 
   it('documents Markdown components prop', () => {
