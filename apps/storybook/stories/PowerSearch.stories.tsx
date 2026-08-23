@@ -1331,7 +1331,12 @@ export const WithCustomComponents: Story = {
           onChange={newFilters => setFilters([...newFilters])}
           components={customComponents}
         />
-        <p style={{marginTop: 16, fontSize: 13, color: '#4E606F'}}>
+        <p
+          style={{
+            marginTop: 16,
+            fontSize: 13,
+            color: 'var(--color-text-secondary)',
+          }}>
           <strong>Custom overrides:</strong> Status tokens show colored text
           (custom Token). Integer fields use a range slider editor (custom
           Editor).
@@ -1381,7 +1386,8 @@ export const StatusVariantComparison: Story = {
     const [a, setA] = useState<PowerSearchFilter[]>([]);
     const [b, setB] = useState<PowerSearchFilter[]>([]);
     return (
-      <div style={{display: 'flex', flexDirection: 'column', gap: 24, width: 400}}>
+      <div
+        style={{display: 'flex', flexDirection: 'column', gap: 24, width: 400}}>
         <PowerSearch
           config={basicConfig}
           filters={a}

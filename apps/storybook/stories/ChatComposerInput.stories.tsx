@@ -114,7 +114,12 @@ export const Controlled: Story = {
             />
           }
         />
-        <div style={{fontSize: 12, fontFamily: 'monospace', color: '#4E606F'}}>
+        <div
+          style={{
+            fontSize: 12,
+            fontFamily: 'monospace',
+            color: 'var(--color-text-secondary)',
+          }}>
           Value: {JSON.stringify(value)}
         </div>
       </div>
@@ -174,7 +179,11 @@ export const MessageHistory: Story = {
         />
         {log.length > 0 && (
           <div
-            style={{fontSize: 12, fontFamily: 'monospace', color: '#4E606F'}}>
+            style={{
+              fontSize: 12,
+              fontFamily: 'monospace',
+              color: 'var(--color-text-secondary)',
+            }}>
             {log.map((msg, i) => (
               <div key={i}>→ {msg}</div>
             ))}
@@ -201,7 +210,7 @@ export const FilePaste: Story = {
           }
         />
         {files.length > 0 && (
-          <div style={{fontSize: 12, color: '#4E606F'}}>
+          <div style={{fontSize: 12, color: 'var(--color-text-secondary)'}}>
             Files: {files.join(', ')}
           </div>
         )}
@@ -251,12 +260,21 @@ export const MentionTrigger: Story = {
             />
           }
         />
-        <div style={{fontSize: 12, fontFamily: 'monospace', color: '#4E606F'}}>
+        <div
+          style={{
+            fontSize: 12,
+            fontFamily: 'monospace',
+            color: 'var(--color-text-secondary)',
+          }}>
           Value: {JSON.stringify(value)}
         </div>
         {log.length > 0 && (
           <div
-            style={{fontSize: 12, fontFamily: 'monospace', color: '#4E606F'}}>
+            style={{
+              fontSize: 12,
+              fontFamily: 'monospace',
+              color: 'var(--color-text-secondary)',
+            }}>
             {log.map((msg, i) => (
               <div key={i}>→ {msg}</div>
             ))}
@@ -370,7 +388,12 @@ export const MultipleTriggers: Story = {
             />
           }
         />
-        <div style={{fontSize: 12, fontFamily: 'monospace', color: '#4E606F'}}>
+        <div
+          style={{
+            fontSize: 12,
+            fontFamily: 'monospace',
+            color: 'var(--color-text-secondary)',
+          }}>
           Value: {JSON.stringify(value)}
         </div>
       </div>

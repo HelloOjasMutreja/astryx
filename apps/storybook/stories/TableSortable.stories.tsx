@@ -97,7 +97,12 @@ export const SingleSort: Story = {
 
     return (
       <div style={{maxWidth: 700}}>
-        <p style={{marginBottom: 8, fontSize: 14, color: '#4E606F'}}>
+        <p
+          style={{
+            marginBottom: 8,
+            fontSize: 14,
+            color: 'var(--color-text-secondary)',
+          }}>
           Click a column header to sort. Current:{' '}
           {sort.length > 0 ? `${sort[0].sortKey} ${sort[0].direction}` : 'none'}
         </p>
@@ -124,7 +129,12 @@ export const MultiSort: Story = {
 
     return (
       <div style={{maxWidth: 700}}>
-        <p style={{marginBottom: 8, fontSize: 14, color: '#4E606F'}}>
+        <p
+          style={{
+            marginBottom: 8,
+            fontSize: 14,
+            color: 'var(--color-text-secondary)',
+          }}>
           Shift+click column headers to add secondary sorts. Active sorts:{' '}
           {sort.map(s => `${s.sortKey} (${s.direction})`).join(', ') || 'none'}
         </p>
@@ -161,7 +171,12 @@ export const CustomSortKey: Story = {
 
     return (
       <div style={{maxWidth: 700}}>
-        <p style={{marginBottom: 8, fontSize: 14, color: '#4E606F'}}>
+        <p
+          style={{
+            marginBottom: 8,
+            fontSize: 14,
+            color: 'var(--color-text-secondary)',
+          }}>
           Age column uses sortKey &quot;yearsOld&quot;, Email uses
           &quot;emailSort&quot;. Current:{' '}
           {sort.length > 0 ? `${sort[0].sortKey} ${sort[0].direction}` : 'none'}
@@ -188,7 +203,12 @@ export const AllowUnsortedState: Story = {
 
     return (
       <div style={{maxWidth: 700}}>
-        <p style={{marginBottom: 8, fontSize: 14, color: '#4E606F'}}>
+        <p
+          style={{
+            marginBottom: 8,
+            fontSize: 14,
+            color: 'var(--color-text-secondary)',
+          }}>
           Cycles: ascending → descending → unsorted. Current:{' '}
           {sort.length > 0
             ? `${sort[0].sortKey} ${sort[0].direction}`
@@ -226,7 +246,12 @@ export const WithSelection: Story = {
 
     return (
       <div style={{maxWidth: 700}}>
-        <p style={{marginBottom: 8, fontSize: 14, color: '#4E606F'}}>
+        <p
+          style={{
+            marginBottom: 8,
+            fontSize: 14,
+            color: 'var(--color-text-secondary)',
+          }}>
           Sorting + Selection composed together. Selected: {selectedKeys.size}{' '}
           of {employees.length}. Sort:{' '}
           {sort.length > 0 ? `${sort[0].sortKey} ${sort[0].direction}` : 'none'}
@@ -258,7 +283,12 @@ export const Controlled: Story = {
 
     return (
       <div style={{maxWidth: 700}}>
-        <p style={{marginBottom: 8, fontSize: 14, color: '#4E606F'}}>
+        <p
+          style={{
+            marginBottom: 8,
+            fontSize: 14,
+            color: 'var(--color-text-secondary)',
+          }}>
           Controlled mode — external state. Current:{' '}
           {sort.length > 0 ? `${sort[0].sortKey} ${sort[0].direction}` : 'none'}
         </p>

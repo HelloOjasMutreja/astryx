@@ -179,7 +179,7 @@ function GalleryEditor({
           style={{
             fontSize: 11,
             fontWeight: 600,
-            color: '#4E606F',
+            color: 'var(--color-text-secondary)',
             marginBottom: 4,
             fontFamily: 'monospace',
           }}>

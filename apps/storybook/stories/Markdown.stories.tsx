@@ -282,7 +282,7 @@ export const Streaming: Story = {
             onClick={replay}
             isDisabled={isStreaming}
           />
-          <span style={{fontSize: 12, color: '#4E606F'}}>
+          <span style={{fontSize: 12, color: 'var(--color-text-secondary)'}}>
             {isStreaming
               ? `Streaming... ${charIndex}/${text.length}`
               : 'Complete'}

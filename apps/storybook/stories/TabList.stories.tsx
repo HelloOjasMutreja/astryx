@@ -95,7 +95,7 @@ export const SizeVariants: Story = {
               style={{
                 marginBottom: '8px',
                 fontSize: '12px',
-                color: '#4E606F',
+                color: 'var(--color-text-secondary)',
                 fontFamily: 'monospace',
               }}>
               size=\"{size}\"
@@ -239,7 +239,11 @@ export const DividerGap: Story = {
           <div
             key={size}
             style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
-            <span style={{font: '600 12px system-ui', color: '#4E606F'}}>
+            <span
+              style={{
+                font: '600 12px system-ui',
+                color: 'var(--color-text-secondary)',
+              }}>
               size=&quot;{size}&quot; · hasDivider · matched Button size
             </span>
             <TabList value={value} onChange={setValue} size={size} hasDivider>
