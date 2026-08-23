@@ -107,3 +107,33 @@ export function linkifyComponents(
 export function stripTitle(markdown: string): string {
   return markdown.replace(/^#\s+.+\n+/, '');
 }
+
+const NO_CHANGES_TEXT = 'No changes in this release.';
+
+/**
+ * A release with no notable changes still gets a version heading from the
+ * changeset tooling, with nothing between it and the next heading (or the
+ * `---` separator before it). Rendered as-is that reads as a broken page —
+ * a heading followed immediately by a divider or another heading, with no
+ * indication the release was simply empty. Fill each of those bodies with
+ * an explicit "no changes" line instead of leaving them bare.
+ *
+ * Call this after `stripTitle`, so the package-name h1 itself is not
+ * mistaken for an empty version section.
+ */
+export function fillEmptyReleases(markdown: string): string {
+  const parts = markdown.split(/(^#{1,2}\s+.+$)/gm);
+  for (let i = 2; i < parts.length; i += 2) {
+    const body = parts[i];
+    const separatorMatch = /^\s*---\s*$/m.exec(body);
+    const bodyWithoutSeparator = separatorMatch
+      ? body.slice(0, separatorMatch.index) +
+        body.slice(separatorMatch.index + separatorMatch[0].length)
+      : body;
+    if (bodyWithoutSeparator.trim() === '') {
+      parts[i] =
+        '\n\n' + NO_CHANGES_TEXT + '\n\n' + (separatorMatch ? '---\n\n' : '');
+    }
+  }
+  return parts.join('');
+}

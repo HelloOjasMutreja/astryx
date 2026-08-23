@@ -12,6 +12,7 @@ import {
   linkifyContributors,
   linkifyComponents,
   stripTitle,
+  fillEmptyReleases,
 } from '../components/changelogLinkify';
 
 describe('linkifyPRs', () => {
@@ -133,6 +134,69 @@ describe('linkifyComponents', () => {
 describe('stripTitle', () => {
   it('removes the leading h1 title line', () => {
     expect(stripTitle('# @astryxdesign/core\n\n# 0.1.1\n')).toBe('# 0.1.1\n');
+  });
+});
+
+describe('fillEmptyReleases', () => {
+  it('fills a version whose only body is the separator to the next heading', () => {
+    const md = [
+      '# 0.4.6',
+      '',
+      '---',
+      '',
+      '# 0.4.5',
+      '',
+      '#### Fixes',
+      '',
+      '- A real fix.',
+    ].join('\n');
+    expect(fillEmptyReleases(md)).toBe(
+      [
+        '# 0.4.6',
+        '',
+        'No changes in this release.',
+        '',
+        '---',
+        '',
+        '# 0.4.5',
+        '',
+        '#### Fixes',
+        '',
+        '- A real fix.',
+      ].join('\n'),
+    );
+  });
+
+  it('fills the last version in the file, which has no trailing separator', () => {
+    expect(fillEmptyReleases('# 0.4.2')).toBe(
+      '# 0.4.2\n\nNo changes in this release.\n\n',
+    );
+  });
+
+  it('leaves a version with real content untouched', () => {
+    const md = [
+      '# 0.4.3',
+      '',
+      '#### Fixes',
+      '',
+      '- A real fix.',
+      '',
+      '---',
+      '',
+      '# 0.4.2',
+      '',
+      '#### Fixes',
+      '',
+      '- Another real fix.',
+    ].join('\n');
+    expect(fillEmptyReleases(md)).toBe(md);
+  });
+
+  it('does not mistake the stripped package title for an empty version', () => {
+    // fillEmptyReleases is documented to run after stripTitle, so the h1
+    // package-name line should already be gone by the time it sees this.
+    const md = ['# 0.4.6', '', '#### Fixes', '', '- A fix.'].join('\n');
+    expect(fillEmptyReleases(md)).toBe(md);
   });
 });
 

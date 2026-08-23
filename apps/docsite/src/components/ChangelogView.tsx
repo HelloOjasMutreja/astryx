@@ -2,7 +2,8 @@
 
 'use client';
 
-import {useState} from 'react';
+import {Suspense} from 'react';
+import {usePathname, useRouter, useSearchParams} from 'next/navigation';
 import * as stylex from '@stylexjs/stylex';
 import {Markdown} from '@astryxdesign/core/Markdown';
 import {Text, Heading} from '@astryxdesign/core/Text';
@@ -17,6 +18,7 @@ import {
   linkifyContributors,
   linkifyComponents,
   stripTitle,
+  fillEmptyReleases,
 } from './changelogLinkify';
 
 interface ChangelogEntry {
@@ -28,6 +30,10 @@ interface ChangelogViewProps {
   changelogs: ChangelogEntry[];
   componentNames: string[];
 }
+
+// The package most people land on this page to read about; picked over
+// "whichever package happens to sort first" (@astryxdesign/cli).
+const DEFAULT_PACKAGE = '@astryxdesign/core';
 
 const styles = stylex.create({
   section: {
@@ -42,11 +48,32 @@ const styles = stylex.create({
   },
 });
 
-export function ChangelogView({
-  changelogs,
-  componentNames,
-}: ChangelogViewProps) {
-  const [activeTab, setActiveTab] = useState(changelogs[0]?.pkg ?? '');
+function ChangelogViewInner({changelogs, componentNames}: ChangelogViewProps) {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const fallbackPackage =
+    changelogs.find(c => c.pkg === DEFAULT_PACKAGE)?.pkg ??
+    changelogs[0]?.pkg ??
+    '';
+  const requestedPackage = searchParams.get('package');
+  // Clamp to a package that actually has a changelog so a stale or
+  // hand-edited `?package=` never lands on a blank panel.
+  const activeTab =
+    requestedPackage != null && changelogs.some(c => c.pkg === requestedPackage)
+      ? requestedPackage
+      : fallbackPackage;
+  const setActiveTab = (value: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (value === fallbackPackage) {
+      params.delete('package');
+    } else {
+      params.set('package', value);
+    }
+    const qs = params.toString();
+    router.replace(`${pathname}${qs ? `?${qs}` : ''}`, {scroll: false});
+  };
   const active = changelogs.find(c => c.pkg === activeTab);
 
   return (
@@ -77,7 +104,9 @@ export function ChangelogView({
             {active != null && (
               <Markdown headingLevelStart={2}>
                 {linkifyComponents(
-                  linkifyContributors(linkifyPRs(stripTitle(active.content))),
+                  linkifyContributors(
+                    linkifyPRs(fillEmptyReleases(stripTitle(active.content))),
+                  ),
                   componentNames,
                 )}
               </Markdown>
@@ -90,5 +119,13 @@ export function ChangelogView({
         )}
       </VStack>
     </Section>
+  );
+}
+
+export function ChangelogView(props: ChangelogViewProps) {
+  return (
+    <Suspense>
+      <ChangelogViewInner {...props} />
+    </Suspense>
   );
 }
