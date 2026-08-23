@@ -72,12 +72,6 @@ export const docs = {
       default: 'false',
     },
     {
-      name: 'width',
-      type: 'SizeValue',
-      description:
-        'Width of the field (number = pixels, string used as-is, e.g. "100%"). Sizes the whole field (label, control, and status) so they stay aligned.',
-    },
-    {
       name: 'onEnter',
       type: '() => void',
       description: 'Callback fired when the user presses the Enter key.',

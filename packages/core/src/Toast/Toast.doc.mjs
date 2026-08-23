@@ -64,6 +64,7 @@ export const docs = {
       name: 'onDismiss',
       type: '(reason: "auto" | "manual") => void',
       description: 'Callback fired when the toast is dismissed.',
+      required: true,
     },
   ],  theming: {
     targets: [
