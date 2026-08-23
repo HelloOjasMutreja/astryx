@@ -54,7 +54,7 @@ export const docs = {
     },
     {
       name: 'shape',
-      type: 'AvatarShape',
+      type: "'circle' | 'rounded' | 'square'",
       description: "Shape applied to all avatars via context, overriding each avatar's own shape prop. Also applied to AvatarGroupOverflow's \"+N\" indicator.",
       default: "'circle'",
     },

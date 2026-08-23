@@ -22,7 +22,7 @@ import {
   fontWeightVars,
   spacingVars,
 } from '../theme/tokens.stylex';
-import {shapeStyles} from '../Avatar';
+import {shapeStyles} from '../Avatar/Avatar';
 import {mergeProps} from '../utils';
 import {resolveSize} from '../Avatar';
 import {useAvatarGroup} from './AvatarGroupContext';
