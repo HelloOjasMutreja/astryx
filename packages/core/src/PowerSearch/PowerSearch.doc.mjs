@@ -159,6 +159,16 @@ export const docs = {
       default: "'none'",
     },
     {
+      name: 'onFocus',
+      type: '(e: FocusEvent<HTMLInputElement>) => void',
+      description: 'Fires when focus enters the search input.',
+    },
+    {
+      name: 'onBlur',
+      type: '(e: FocusEvent<HTMLInputElement>) => void',
+      description: 'Fires when focus leaves the search input.',
+    },
+    {
       name: 'xstyle',
       type: 'StyleXStyles',
       description:
