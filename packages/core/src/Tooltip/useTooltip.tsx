@@ -32,6 +32,7 @@ import {
 } from '../Layer/useTouchTrigger';
 import {layerAnimations} from '../Layer/layerAnimations.stylex';
 import {useLayerDismissal} from '../Layer/useLayerDismissal';
+import {showWhenAnchored} from '../Layer/showWhenAnchored';
 import {themeProps} from '../utils/themeProps';
 import {
   colorVars,
@@ -529,7 +530,7 @@ export function useTooltip(options: TooltipOptions = {}): TooltipReturn {
   // Show on mount when isDefaultOpen is true
   useEffect(() => {
     if (isDefaultOpen) {
-      showLayer();
+      return showWhenAnchored(triggerRef.current, showLayer);
     }
     // eslint-disable-next-line @eslint-react/exhaustive-deps -- mount-only: isDefaultOpen is not reactive
   }, []);
@@ -541,7 +542,7 @@ export function useTooltip(options: TooltipOptions = {}): TooltipReturn {
     }
     if (isOpen) {
       clearTimeouts();
-      showLayer();
+      return showWhenAnchored(triggerRef.current, showLayer);
     } else {
       clearTimeouts();
       hideLayer();
