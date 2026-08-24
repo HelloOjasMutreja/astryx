@@ -84,7 +84,20 @@ function resolve(value, theme, modeIndex, seen = new Set()) {
     return resolve(next, theme, modeIndex, new Set([...seen, name]));
   }
 
-  return /^#[0-9a-f]{3,8}$/i.test(v) ? v : null;
+  if (/^#[0-9a-f]{3,8}$/i.test(v)) return v;
+
+  // Every value this file resolves today is hex, at every step: authored
+  // literals, and var() indirection through other --color-* tokens (which
+  // are hex too). A colour in oklch()/hsl()/rgb() would silently fall
+  // through to null here otherwise, and the only visible symptom would be
+  // `rows` coming up short with no clue why. Fail loud with the actual
+  // unresolvable value instead.
+  throw new Error(
+    `check-syntax-punctuation-contrast: cannot resolve "${v}" to a hex ` +
+      `colour. Only hex literals, light-dark(), and var() indirection are ` +
+      `supported — add a case here if a theme starts using a different ` +
+      `colour syntax.`,
+  );
 }
 
 /** `#rgb` / `#rrggbb` / `#rrggbbaa` -> `{r, g, b, a}` in 0-255 / 0-1. */
