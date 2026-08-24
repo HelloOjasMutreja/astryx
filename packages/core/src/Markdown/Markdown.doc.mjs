@@ -99,7 +99,7 @@ export const docs = {
     {
       name: 'components',
       type: 'MarkdownComponents',
-      description: 'Custom React component overrides for rendered Markdown elements (code, link, heading, paragraph, image, blockquote, hr, citation).',
+      description: 'Custom React component overrides for rendered Markdown elements (code, inlineCode, link, heading, paragraph, image, blockquote, hr, citation).',
     },
     {
       name: 'xstyle',
