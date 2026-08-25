@@ -38,6 +38,25 @@
  * descendant when an ANCESTOR is hovered, which is a different question (a
  * row may legitimately highlight around a disabled control) and is left
  * alone.
+ *
+ * GAP, known and tracked: `:hover` combined with a pseudo-ELEMENT —
+ * `:hover::after`, `:hover::before` — is left unguarded too, and is NOT
+ * autofixed if already unguarded. `@stylexjs/babel-plugin@0.19.0`'s
+ * getCompoundPseudoPriority() cannot match the nested parens in
+ * `:where(:not(:disabled,[aria-disabled="true"]))` and bails to a wrong
+ * priority default, which silently drops the rule's specificity boost and
+ * can let an unrelated resting rule win instead — see
+ * facebook/astryx#5442, where this broke SelectableCard/Thumbnail/
+ * ClickableCard's hover overlay. Guarding a `:hover::after` key here would
+ * reintroduce that regression, so the exemption stays until the upstream
+ * tokenizer is fixed.
+ *
+ * This is a real coverage hole, not a free pass: a `:hover::after`/
+ * `:hover::before` key on a component that does NOT already exclude the
+ * disabled case some other way (the three components above all gate the
+ * whole class in JS — `!isDisabled && styles.hoverOnPointer`) can still ship
+ * a hover-while-disabled bug with nothing here to catch it. Verify that
+ * gating by hand for anything new in this shape.
  */
 
 /** Zero-specificity guard appended to a self-hover selector. */
@@ -57,6 +76,17 @@ function isSelfHoverKey(key) {
 /** Already guarded, in any spelling a hand might use. */
 function hasDisabledGuard(key) {
   return /:not\([^)]*(?::disabled|\[aria-disabled)/.test(key);
+}
+
+/**
+ * Combines `:hover` with a pseudo-ELEMENT (`::after`, `::before`, ...).
+ *
+ * See the GAP note in the file header: guarding this shape hits a StyleX
+ * tokenizer bug that silently breaks the rule it's meant to protect, so it's
+ * deliberately left unguarded and unflagged until that's fixed upstream.
+ */
+function hasPseudoElement(key) {
+  return key.includes('::');
 }
 
 /**
@@ -119,6 +149,7 @@ const rule = {
         if (!isInsideStylexCreate(node)) return;
         const key = keyOf(node);
         if (!isSelfHoverKey(key) || hasDisabledGuard(key)) return;
+        if (hasPseudoElement(key)) return;
 
         const fixed = guardKey(key);
         context.report({
@@ -143,4 +174,4 @@ const rule = {
 };
 
 export default rule;
-export {GUARD, guardKey, isSelfHoverKey, hasDisabledGuard};
+export {GUARD, guardKey, isSelfHoverKey, hasDisabledGuard, hasPseudoElement};
