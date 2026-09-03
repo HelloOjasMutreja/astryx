@@ -8,7 +8,7 @@
 
 The guard was redundant on these three anyway: each already applies the whole `hoverOnPointer` class conditionally (`!isDisabled && styles.hoverOnPointer`, or `isInteractive && ...` for Thumbnail, where `isInteractive` already excludes `isDisabled`), so a disabled/non-interactive card never carries the class that would need guarding. Reverted the three keys to bare `:hover::after`, restoring the pre-regression 7-boost CSS output exactly.
 
-`@astryx/no-hover-on-disabled` now knows to leave `:hover` + pseudo-element combinations alone — guarding them would just reintroduce this exact break until the StyleX tokenizer is fixed upstream. This is a real, documented coverage gap, not a free pass: a new `:hover::after`/`:hover::before` key that doesn't already exclude the disabled case some other way (as these three do, in JS) needs manual verification, since the lint rule can no longer catch it in this shape.
+`@astryx/no-hover-on-disabled` now knows not to autofix a `:hover` + pseudo-element key, anywhere — autofixing one would reintroduce this exact break until the StyleX tokenizer is fixed upstream. It still reports the key everywhere except these three files, so a new unguarded `:hover::after`/`:hover::before` still needs manual verification (does the component already exclude the disabled case in JS, the way these three do?) before it's added to the rule's narrow exemption list.
 
 Fixes #5442.
 
