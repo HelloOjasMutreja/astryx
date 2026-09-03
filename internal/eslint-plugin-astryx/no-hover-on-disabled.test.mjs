@@ -68,26 +68,35 @@ ruleTester.run('no-hover-on-disabled', rule, {
     {
       code: `const handlers = {':hover': () => {}};`,
     },
-    // :hover combined with a pseudo-ELEMENT is a known, tracked gap: guarding
-    // it hits a StyleX 0.19.0 tokenizer bug that silently breaks the very
-    // rule this is meant to protect (facebook/astryx#5442). Left unguarded
-    // and unflagged until that's fixed upstream — see the GAP note in
-    // no-hover-on-disabled.js.
+    // :hover combined with a pseudo-ELEMENT in one of the three files this PR
+    // hand-verified is JS-gated (facebook/astryx#5442) stays unreported —
+    // everywhere else, the same key is reported (see invalid below).
     {
       code: `
         import * as stylex from '@stylexjs/stylex';
         const styles = stylex.create({
-          tab: {opacity: {default: 0, ':hover::after': 1}},
+          overlay: {opacity: {default: 0, ':hover::after': 1}},
         });
       `,
+      filename: '/repo/packages/core/src/SelectableCard/SelectableCard.tsx',
     },
     {
       code: `
         import * as stylex from '@stylexjs/stylex';
         const styles = stylex.create({
-          tab: {opacity: {default: 0, ':hover::before': 1}},
+          overlay: {opacity: {default: 0, ':hover::before': 1}},
         });
       `,
+      filename: '/repo/packages/core/src/Thumbnail/Thumbnail.tsx',
+    },
+    {
+      code: `
+        import * as stylex from '@stylexjs/stylex';
+        const styles = stylex.create({
+          overlay: {opacity: {default: 0, ':hover::after': 1}},
+        });
+      `,
+      filename: '/repo/packages/core/src/ClickableCard/ClickableCard.tsx',
     },
   ],
   invalid: [
@@ -155,6 +164,30 @@ ruleTester.run('no-hover-on-disabled', rule, {
           item: {color: {default: 'red', ':hover${GUARD}': 'blue'}},
         });
       `,
+    },
+    // :hover + a pseudo-element outside the three hand-verified files is
+    // reported (unlike the exempt cases above), but not autofixed: the
+    // fixer would hit the tokenizer bug and reintroduce facebook/astryx#5442.
+    {
+      code: `
+        import * as stylex from '@stylexjs/stylex';
+        const styles = stylex.create({
+          tab: {opacity: {default: 0, ':hover::after': 1}},
+        });
+      `,
+      filename: '/repo/packages/core/src/Tabs/Tabs.tsx',
+      errors: [{messageId: 'unguardedHoverPseudoElement'}],
+      output: null,
+    },
+    {
+      code: `
+        import * as stylex from '@stylexjs/stylex';
+        const styles = stylex.create({
+          tab: {opacity: {default: 0, ':hover::before': 1}},
+        });
+      `,
+      errors: [{messageId: 'unguardedHoverPseudoElement'}],
+      output: null,
     },
   ],
 });
