@@ -571,6 +571,11 @@ export function SideNavItem({
       ),
     );
 
+    const collapsedAccessibleLabel =
+      rest['aria-label'] != null && rest['aria-label'].trim() !== ''
+        ? rest['aria-label']
+        : label;
+
     // Items with children: popover trigger + popover
     if (hasChildren) {
       return (
@@ -580,7 +585,7 @@ export function SideNavItem({
             type="button"
             {...rest}
             {...hoverTriggerProps}
-            aria-label={rest['aria-label'] ?? label}
+            aria-label={collapsedAccessibleLabel}
             data-testid={testId}
             {...popover.triggerProps}
             {...collapsedItemStyles}>
@@ -607,7 +612,7 @@ export function SideNavItem({
     const collapsedAriaProps = {
       'aria-current': isSelected ? ('page' as const) : undefined,
       'aria-disabled': isDisabled || undefined,
-      'aria-label': rest['aria-label'] ?? label,
+      'aria-label': collapsedAccessibleLabel,
       'data-testid': testId,
     };
 

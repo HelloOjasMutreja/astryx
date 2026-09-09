@@ -1154,6 +1154,20 @@ describe('SideNavItem (collapsed)', () => {
       );
     });
 
+    it('keeps a consumer aria-label on the collapsed button, instead of falling back to label', () => {
+      renderCollapsed(
+        <SideNavItem
+          label="Home"
+          icon={StubIcon}
+          aria-label="Open Home, 3 items need attention"
+        />,
+      );
+      expect(screen.getByRole('button')).toHaveAttribute(
+        'aria-label',
+        'Open Home, 3 items need attention',
+      );
+    });
+
     it('keeps a consumer aria-label on the collapsed popover trigger, instead of falling back to label', () => {
       renderCollapsed(
         <SideNavItem
@@ -1167,6 +1181,31 @@ describe('SideNavItem (collapsed)', () => {
       expect(screen.getByTestId('parent')).toHaveAttribute(
         'aria-label',
         'Settings, 2 updates available',
+      );
+    });
+
+    it('falls back to label when a consumer aria-label is empty or whitespace', () => {
+      const {rerender} = renderCollapsed(
+        <SideNavItem
+          label="Dashboard"
+          icon={StubIcon}
+          href="/dashboard"
+          aria-label=""
+        />,
+      );
+      expect(screen.getByRole('link')).toHaveAttribute(
+        'aria-label',
+        'Dashboard',
+      );
+
+      rerender(
+        <SideNavCollapseContext value={COLLAPSED_CONTEXT}>
+          <SideNavItem label="Dashboard" icon={StubIcon} aria-label="   " />
+        </SideNavCollapseContext>,
+      );
+      expect(screen.getByRole('button')).toHaveAttribute(
+        'aria-label',
+        'Dashboard',
       );
     });
 
