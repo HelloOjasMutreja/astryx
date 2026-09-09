@@ -9,6 +9,8 @@
  * @position Core implementation; used inside SideNav children
  *
  * Navigation item with icon, selected state, row-level actions, and nesting.
+ * Collapsed icon-only controls use a meaningful consumer `aria-label` when
+ * provided and fall back to `label` when it is missing or blank.
  *
  * Collapsed items with children open their submenu flyout through
  * `useMenuHover`, the shared hover-intent hook (same one `SideNavHeading` and
