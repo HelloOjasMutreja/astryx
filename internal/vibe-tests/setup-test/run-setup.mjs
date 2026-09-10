@@ -25,6 +25,7 @@ import {
   validatePromptContracts,
 } from './setup-matrix.mjs';
 import {assertPublicArtifactSafe} from '../src/public-artifact.mjs';
+import {linkDirectory} from './linkDirectory.mjs';
 
 const EXP_DIR = path.dirname(fileURLToPath(import.meta.url));
 const VIBE_DIR = path.resolve(EXP_DIR, '..');
@@ -83,38 +84,6 @@ function copyDirectory(source, destination) {
     const to = path.join(destination, entry.name);
     if (entry.isDirectory()) copyDirectory(from, to);
     else fs.copyFileSync(from, to);
-  }
-}
-
-// Cross-platform equivalent of `cp -al`: recurse into real directories,
-// hard-link regular files (shares bytes with depsDir instead of duplicating
-// them), and recreate symlinks as symlinks rather than dereferencing them.
-// pnpm's Windows node_modules layout is junction-heavy (readdirSync reports
-// these as isSymbolicLink(), not isDirectory()), and Windows can't hard-link
-// a reparse point, so those need `fs.symlinkSync(..., 'junction')` — the one
-// symlink type Windows creates without elevated privileges. The recreated
-// junction's target stays an absolute path into depsDir (that's what
-// readlinkSync returns for a junction), so it keeps depending on depsDir
-// existing — true for the run's lifetime, since prepareDependencies() caches
-// and never removes it.
-function linkDirectory(source, destination) {
-  ensureDir(destination);
-  for (const entry of fs.readdirSync(source, {withFileTypes: true})) {
-    const from = path.join(source, entry.name);
-    const to = path.join(destination, entry.name);
-    if (entry.isSymbolicLink()) {
-      const target = fs.readlinkSync(from);
-      const isDir = fs.statSync(from).isDirectory();
-      fs.symlinkSync(
-        target,
-        to,
-        process.platform === 'win32' ? (isDir ? 'junction' : 'file') : undefined,
-      );
-    } else if (entry.isDirectory()) {
-      linkDirectory(from, to);
-    } else {
-      fs.linkSync(from, to);
-    }
   }
 }
 
