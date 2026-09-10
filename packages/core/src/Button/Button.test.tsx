@@ -16,7 +16,6 @@ import {
   fireEvent,
   createEvent,
   act,
-  waitFor,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {Button} from './Button';
@@ -120,18 +119,11 @@ describe('Button', () => {
     expect(button).not.toBeDisabled();
     expect(button).toHaveAttribute('aria-disabled', 'true');
 
-    act(() => {
+    await act(async () => {
       resolveAction?.();
+      await Promise.resolve();
     });
-    // useTransition's isPending can take more than one microtask tick to
-    // settle back to false — poll instead of assuming a single act() flushes
-    // it, which fails deterministically under this React/testing-library
-    // combination (unrelated to the busy/aria-disabled change above; kept
-    // here only because reverting it breaks this test outright — see #4885's
-    // review for the standalone fix this carries over from).
-    await waitFor(() => {
-      expect(button).not.toHaveAttribute('aria-busy', 'true');
-    });
+    expect(button).not.toHaveAttribute('aria-busy', 'true');
     expect(button).not.toBeDisabled();
     expect(button).not.toHaveAttribute('aria-disabled');
   });
@@ -395,14 +387,11 @@ describe('Button', () => {
     expect(button).toHaveAttribute('aria-busy', 'true');
     expect(button).not.toBeDisabled();
 
-    act(() => {
+    await act(async () => {
       resolveAction?.();
+      await Promise.resolve();
     });
-    // See the comment on the equivalent wait above — same
-    // React/testing-library timing gap, unrelated to isInterruptible itself.
-    await waitFor(() => {
-      expect(button).not.toHaveAttribute('aria-busy', 'true');
-    });
+    expect(button).not.toHaveAttribute('aria-busy', 'true');
     expect(button).not.toBeDisabled();
   });
 
