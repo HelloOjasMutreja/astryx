@@ -10,7 +10,14 @@
  */
 
 import {describe, it, expect, vi} from 'vitest';
-import {render, screen, fireEvent, act, waitFor} from '@testing-library/react';
+import {
+  render,
+  screen,
+  fireEvent,
+  createEvent,
+  act,
+  waitFor,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {Button} from './Button';
 import {Badge} from '../Badge/Badge';
@@ -117,8 +124,11 @@ describe('Button', () => {
       resolveAction?.();
     });
     // useTransition's isPending can take more than one microtask tick to
-    // settle back to false — poll instead of assuming a single await flushes
-    // it, which was flaky under full-suite timing.
+    // settle back to false — poll instead of assuming a single act() flushes
+    // it, which fails deterministically under this React/testing-library
+    // combination (unrelated to the busy/aria-disabled change above; kept
+    // here only because reverting it breaks this test outright — see #4885's
+    // review for the standalone fix this carries over from).
     await waitFor(() => {
       expect(button).not.toHaveAttribute('aria-busy', 'true');
     });
@@ -388,9 +398,8 @@ describe('Button', () => {
     act(() => {
       resolveAction?.();
     });
-    // useTransition's isPending can take more than one microtask tick to
-    // settle back to false — poll instead of assuming a single await flushes
-    // it, which was flaky under full-suite timing.
+    // See the comment on the equivalent wait above — same
+    // React/testing-library timing gap, unrelated to isInterruptible itself.
     await waitFor(() => {
       expect(button).not.toHaveAttribute('aria-busy', 'true');
     });
@@ -601,8 +610,6 @@ describe('Button', () => {
   });
 
   it('exposes aria-busy on the link-rendered button while loading', () => {
-    // Non-interruptible loading disables the button, which falls back to
-    // <button> rendering — so an anchor only shows loading when interruptible.
     render(
       <Button
         label="Docs"
@@ -619,5 +626,37 @@ describe('Button', () => {
     render(<Button label="Docs" href="https://example.com" />);
     const link = screen.getByRole('link');
     expect(link).not.toHaveAttribute('aria-busy');
+  });
+
+  it('stays an anchor while busy-only, not a disabled <button> fallback (#4871)', () => {
+    // Non-interruptible busy is exactly the isBusyOnlyDisabled case: not
+    // isDisabled, blocked only because a fire-once action is in flight.
+    // Swapping the element to <button disabled> here would drop focus the
+    // same way the native disabled attribute did (credit @AKnassa, #4879).
+    render(<Button label="Docs" href="https://example.com" isLoading />);
+    const link = screen.getByRole('link', {name: 'Docs'});
+    expect(link.tagName).toBe('A');
+    expect(link).toHaveAttribute('href', 'https://example.com');
+    expect(link).toHaveAttribute('aria-busy', 'true');
+    expect(link).toHaveAttribute('aria-disabled', 'true');
+    expect(link).not.toHaveAttribute('disabled');
+  });
+
+  it('keeps a busy-only anchor focusable and guards its navigation', () => {
+    render(<Button label="Docs" href="https://example.com" isLoading />);
+    const link = screen.getByRole('link', {name: 'Docs'});
+    link.focus();
+    expect(link).toHaveFocus();
+
+    const event = createEvent.click(link);
+    fireEvent(link, event);
+    expect(event.defaultPrevented).toBe(true);
+  });
+
+  it('falls back to <button disabled> for a truly disabled href Button', () => {
+    render(<Button label="Docs" href="https://example.com" isDisabled />);
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+    const button = screen.getByRole('button', {name: 'Docs'});
+    expect(button).toBeDisabled();
   });
 });

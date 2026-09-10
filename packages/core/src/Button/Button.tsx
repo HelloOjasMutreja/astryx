@@ -590,9 +590,13 @@ export function Button({
 
   const LinkComponent = useLinkComponent(as);
 
-  // Render as link when href is provided and button is not disabled.
-  // Disabled links are an accessibility anti-pattern — fall back to <button>.
-  const renderAsLink = href != null && !buttonDisabled;
+  // Render as link when href is provided and the button is not TRULY
+  // disabled. Disabled links are an accessibility anti-pattern, so a
+  // genuinely isDisabled/group-disabled button falls back to <button>.
+  // Busy-only does NOT fall back: swapping <a> for a disabled <button>
+  // mid-action would drop focus the same way the native attribute does
+  // (credit @AKnassa, #4879), which is exactly the bug this PR fixes.
+  const renderAsLink = href != null && !isTrueDisabled;
 
   // Use aria-disabled (button stays focusable) when busy-only, or when a
   // tooltip is present so keyboard users can still reach it. A genuinely
@@ -775,6 +779,7 @@ export function Button({
         {...describedByProp}
         {...edgeCompAttr}
         aria-busy={isLoadingState || undefined}
+        aria-disabled={useAriaDisabled || undefined}
         onClick={handleClick}>
         {buttonContent}
       </LinkComponent>
