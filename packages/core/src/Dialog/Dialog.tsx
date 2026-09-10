@@ -500,7 +500,11 @@ export function Dialog({
   // this component's own effects, so by the time an effect read
   // document.activeElement it would already be the dialog's own newly
   // focused content instead of the external trigger (#5637).
-  const wasOpenRef = useRef(isOpen);
+  //
+  // Starts false rather than isOpen: a Dialog first mounted with
+  // isOpen={true} (e.g. AlertDialog) still needs its rising edge to fire
+  // on that very first render, not be treated as already-open.
+  const wasOpenRef = useRef(false);
   if (isOpen && !wasOpenRef.current) {
     triggerElementRef.current = document.activeElement as HTMLElement | null;
   }
