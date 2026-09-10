@@ -32,7 +32,6 @@ import {
 } from '../Layer/useTouchTrigger';
 import {layerAnimations} from '../Layer/layerAnimations.stylex';
 import {useLayerDismissal} from '../Layer/useLayerDismissal';
-import {showWhenAnchored} from '../Layer/showWhenAnchored';
 import {
   colorVars,
   shadowVars,
@@ -571,7 +570,7 @@ export function useHoverCard(options: HoverCardOptions = {}): HoverCardReturn {
   // Show on mount when isDefaultOpen is true
   useEffect(() => {
     if (isDefaultOpen) {
-      return showWhenAnchored(triggerRef.current, layer.show);
+      layer.show();
     }
     // eslint-disable-next-line @eslint-react/exhaustive-deps -- intentionally only on mount
   }, []);
@@ -583,7 +582,7 @@ export function useHoverCard(options: HoverCardOptions = {}): HoverCardReturn {
     }
     if (isOpen) {
       clearTimeouts();
-      return showWhenAnchored(triggerRef.current, layer.show);
+      layer.show();
     } else {
       clearTimeouts();
       // A consumer closing the card while it holds focus would strand focus on
