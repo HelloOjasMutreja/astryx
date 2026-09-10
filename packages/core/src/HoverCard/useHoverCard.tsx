@@ -32,7 +32,6 @@ import {
 } from '../Layer/useTouchTrigger';
 import {layerAnimations} from '../Layer/layerAnimations.stylex';
 import {useLayerDismissal} from '../Layer/useLayerDismissal';
-import {showWhenAnchored} from '../Layer/showWhenAnchored';
 import {
   colorVars,
   shadowVars,
