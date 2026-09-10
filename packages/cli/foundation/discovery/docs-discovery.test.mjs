@@ -70,9 +70,40 @@ describe('assets/docs audience', () => {
   // also match plenty of innocent prose ("Verification Checklist", "Audit
   // every reset stylesheet"), which would make the check noisy enough to get
   // suppressed rather than acted on.
+  //
+  // The README's own rule (line 24) is that these words are a tell "as
+  // things the reader must produce" — not as vocabulary. "A component's
+  // theme targets are stable once published" is caller-facing even where it
+  // sounds like process; only a statement asking the reader to produce or
+  // hand over one of these things is ours. "GPU compositor promotion" is a
+  // real caller-facing rendering term with no reader-facing directive
+  // anywhere near it, and matched before this fixed it (#5370). So a process
+  // word only counts when the SAME sentence also carries a directive or
+  // audience marker — "must", "before merging/promoting", "attach",
+  // "complete", "reviewer(s)", "checklist", "gate", "sign off" — which is
+  // exactly the shape of language the draft (#5351) that prompted this check
+  // actually used.
   const OUR_PROCESS_WORDS =
     /\b(rubric|readiness|promotion|sign-off|evidence)\b/i;
+  const PROCESS_DIRECTIVE_CONTEXT =
+    /\b(you|reviewer|reviewers|must|should|before (merging|promoting)|attach|produce|complete|pass(?:es|ing)?|need to|checklist|gate|sign[- ]?off)\b/i;
   const DOCS_DIR = path.join(CLI_ROOT, 'assets', 'docs');
+
+  /**
+   * Sentence-level, not file-level: a process word appearing anywhere in a
+   * long topic file, however many caller-facing paragraphs away from any
+   * directive language, is not the pattern this check exists to catch.
+   */
+  function findOurProcessWordHits(content) {
+    const hits = [];
+    for (const sentence of content.split(/(?<=[.!?])\s+|\n{2,}/)) {
+      const wordMatch = sentence.match(OUR_PROCESS_WORDS);
+      if (wordMatch && PROCESS_DIRECTIVE_CONTEXT.test(sentence)) {
+        hits.push(wordMatch[0]);
+      }
+    }
+    return hits;
+  }
 
   it('has no our-process words in a caller-facing doc topic', () => {
     const hits = [];
@@ -81,9 +112,8 @@ describe('assets/docs audience', () => {
         continue; // README.md documents the rule; it isn't shipped as a topic.
       }
       const content = fs.readFileSync(path.join(DOCS_DIR, file), 'utf8');
-      const match = content.match(OUR_PROCESS_WORDS);
-      if (match) {
-        hits.push(`${file}: "${match[0]}"`);
+      for (const word of findOurProcessWordHits(content)) {
+        hits.push(`${file}: "${word}"`);
       }
     }
     expect(
@@ -91,6 +121,26 @@ describe('assets/docs audience', () => {
       'This word describes building Astryx, not building with it. Move ' +
         'the material to the matching wiki page in assets/docs/README.md\'s ' +
         'routing table instead of shipping it here.',
+    ).toEqual([]);
+  });
+
+  it('flags process language asking the reader to produce one of these things', () => {
+    expect(
+      findOurProcessWordHits(
+        'Reviewers must attach evidence to the readiness checklist before sign-off.',
+      ),
+    ).toEqual(['evidence']);
+  });
+
+  it('allows a caller-facing rendering term that happens to share a word', () => {
+    // The exact false positive from #5370: "promotion" describing GPU
+    // compositor behavior, a fact about the system a caller can rely on, not
+    // a reader-facing directive.
+    expect(
+      findOurProcessWordHits(
+        'A layer with a running transform animation gets its own compositor ' +
+          'promotion, which keeps the animation off the main thread.',
+      ),
     ).toEqual([]);
   });
 });
