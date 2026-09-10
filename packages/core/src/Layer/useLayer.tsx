@@ -750,7 +750,14 @@ function useLayerImplementation(
       return;
     }
     const rect = anchor.getBoundingClientRect();
-    if (rect.width !== 0 || rect.height !== 0) {
+    // No API to wait on (jsdom, an old browser): same fallback
+    // sharedResizeObserver.ts uses for the same gap — skip the wait rather
+    // than throw, and open against whatever box is available now.
+    if (
+      rect.width !== 0 ||
+      rect.height !== 0 ||
+      typeof ResizeObserver === 'undefined'
+    ) {
       pendingAnchorWaitRef.current = waitForAncestorAnimations(anchor, openNow);
       return;
     }
