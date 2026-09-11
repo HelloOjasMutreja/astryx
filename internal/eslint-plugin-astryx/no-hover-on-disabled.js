@@ -53,21 +53,57 @@
  * output everywhere except the three files below, same as any other
  * unguarded hover key — only the autofix is withheld.
  *
- * EXEMPT_FILES narrows the reported-but-not-flagged case to exactly the
- * three files where this PR verified, by hand, that JS-level gating already
- * makes the guard redundant (`!isDisabled && styles.hoverOnPointer`, or
- * equivalent). Nothing else gets a free pass: a new `:hover::after`/
- * `:hover::before` key anywhere else is reported (without an autofix) and
- * needs the same by-hand verification before it's added to this list.
+ * EXEMPT_SITES narrows the reported-but-not-flagged case to exactly the
+ * three (file, top-level style key) pairs where this PR verified, by hand,
+ * that JS-level gating already makes the guard redundant
+ * (`!isDisabled && styles.hoverOnPointer`, or equivalent). The exemption is
+ * keyed on the style object's own property name, not just the filename: a
+ * new `:hover::after`/`:hover::before` key under any OTHER name in these
+ * same files is still reported, and needs the same by-hand verification
+ * before it's added here.
  */
-const EXEMPT_FILES = [
-  /[/\\]SelectableCard[/\\]SelectableCard\.tsx$/,
-  /[/\\]Thumbnail[/\\]Thumbnail\.tsx$/,
-  /[/\\]ClickableCard[/\\]ClickableCard\.tsx$/,
+const EXEMPT_SITES = [
+  {file: /[/\\]SelectableCard[/\\]SelectableCard\.tsx$/, key: 'hoverOnPointer'},
+  {file: /[/\\]Thumbnail[/\\]Thumbnail\.tsx$/, key: 'hoverOnPointer'},
+  {file: /[/\\]ClickableCard[/\\]ClickableCard\.tsx$/, key: 'hoverOnPointer'},
 ];
 
-function isExemptFile(filename) {
-  return !!filename && EXEMPT_FILES.some(pattern => pattern.test(filename));
+function isExemptSite(filename, styleKeyName) {
+  if (!filename || !styleKeyName) return false;
+  return EXEMPT_SITES.some(
+    site => site.key === styleKeyName && site.file.test(filename),
+  );
+}
+
+/** Is `objectExpr` the object literal passed directly to `stylex.create()`? */
+function isStylexCreateArgument(objectExpr) {
+  const parent = objectExpr?.parent;
+  return (
+    parent?.type === 'CallExpression' &&
+    parent.callee?.type === 'MemberExpression' &&
+    parent.callee.object?.name === 'stylex' &&
+    parent.callee.property?.name === 'create'
+  );
+}
+
+/**
+ * The name of the top-level property passed directly to `stylex.create({})`
+ * that encloses `node` — e.g. `hoverOnPointer` in
+ * `stylex.create({hoverOnPointer: {':hover::after': {...}}})`.
+ */
+function getEnclosingStyleKeyName(node) {
+  let current = node;
+  while (current) {
+    if (
+      current.type === 'Property' &&
+      current.parent?.type === 'ObjectExpression' &&
+      isStylexCreateArgument(current.parent)
+    ) {
+      return keyOf(current);
+    }
+    current = current.parent;
+  }
+  return null;
 }
 
 /** Zero-specificity guard appended to a self-hover selector. */
@@ -168,7 +204,7 @@ const rule = {
         if (!isSelfHoverKey(key) || hasDisabledGuard(key)) return;
 
         if (hasPseudoElement(key)) {
-          if (isExemptFile(filename)) return;
+          if (isExemptSite(filename, getEnclosingStyleKeyName(node))) return;
           context.report({
             node: node.key,
             messageId: 'unguardedHoverPseudoElement',
@@ -206,5 +242,6 @@ export {
   isSelfHoverKey,
   hasDisabledGuard,
   hasPseudoElement,
-  isExemptFile,
+  isExemptSite,
+  getEnclosingStyleKeyName,
 };
