@@ -3,7 +3,7 @@
 /**
  * @file tabs.fixtures.ts
  * @input Uses TabsStateFacts
- * @output Plain-HTML conforming and deliberately violating Tabs fixtures
+ * @output Plain-HTML conforming and deliberately violating Tabs fixtures, including two-tab boundary and clipped-paint mutations
  * @position Mutation proof for the reusable contract; no Astryx component code.
  */
 
@@ -103,12 +103,14 @@ interface GroupOptions {
   readonly firstPanelHidden?: boolean;
   readonly firstPanelCssHidden?: boolean;
   readonly firstPanelTransparent?: boolean;
+  readonly firstPanelClipped?: boolean;
   readonly secondPanelHidden?: boolean;
   readonly secondPanelCssVisible?: boolean;
   readonly duplicatePanelId?: boolean;
   readonly duplicateTabId?: boolean;
   readonly wrongEntry?: boolean;
   readonly trapTab?: boolean;
+  readonly thirdTab?: boolean;
   readonly arrow?:
     | 'works'
     | 'inert'
@@ -142,12 +144,14 @@ function groupHtml(options: GroupOptions = {}): string {
     firstPanelHidden = !firstSelected,
     firstPanelCssHidden = false,
     firstPanelTransparent = false,
+    firstPanelClipped = false,
     secondPanelHidden = !secondSelected,
     secondPanelCssVisible = false,
     duplicatePanelId = false,
     duplicateTabId = false,
     wrongEntry = false,
     trapTab = false,
+    thirdTab = true,
     arrow = 'works',
     keyboard = 'works',
     pointer = 'works',
@@ -183,17 +187,17 @@ function groupHtml(options: GroupOptions = {}): string {
     <div${subjectAttribute('tablist')} data-a11y-tabs role="${tablistRole}"${named ? ' aria-label="Project views"' : ''} dir="${direction}">
       <button${subjectAttribute('first-tab')} data-a11y-related="first" data-key="first" id="tab-first" role="${tabRole}" aria-selected="${firstSelected}"${controlsAttribute}${firstAria} tabindex="${wrongEntry ? -1 : firstSelected ? 0 : -1}">${firstLabel}</button>
       <button${subjectAttribute('second-tab')} data-a11y-related="second" data-key="second" id="tab-second" role="tab" aria-selected="${secondSelected}" aria-controls="panel-second" tabindex="${wrongEntry ? 0 : secondSelected ? 0 : -1}"${secondDisabled ? ' disabled' : ''}${secondAriaDisabled ? ' aria-disabled="true"' : ''}>Activity</button>
-      <button data-a11y-related="third" data-key="third" id="tab-third" role="tab" aria-selected="false" aria-controls="panel-third" tabindex="-1"${thirdDisabled ? ' disabled' : ''}>Members</button>
+      ${thirdTab ? '<button data-a11y-related="third" data-key="third" id="tab-third" role="tab" aria-selected="false" aria-controls="panel-third" tabindex="-1"' + (thirdDisabled ? ' disabled' : '') + '>Members</button>' : ''}
     </div>
-    <div${subjectAttribute('first-panel')} data-a11y-related="panel-first" id="panel-first" role="${panelRole}"${panelLabelAttribute}${firstPanelHidden ? ' hidden' : ''}${firstPanelCssHidden ? ' style="display:none"' : firstPanelTransparent ? ' style="opacity:0"' : ''}>Overview panel</div>
+    <div${subjectAttribute('first-panel')} data-a11y-related="panel-first" id="panel-first" role="${panelRole}"${panelLabelAttribute}${firstPanelHidden ? ' hidden' : ''}${firstPanelCssHidden ? ' style="display:none"' : firstPanelTransparent ? ' style="opacity:0"' : firstPanelClipped ? ' style="clip-path:inset(100%)"' : ''}>Overview panel</div>
     <div${subjectAttribute('second-panel')} data-a11y-related="panel-second" id="panel-second" role="tabpanel" aria-labelledby="tab-second"${secondPanelHidden ? ' hidden' : ''}${secondPanelCssVisible ? ' style="display:block !important"' : ''}>Activity panel</div>
-    <div data-a11y-related="panel-third" id="panel-third" role="tabpanel" aria-labelledby="tab-third" hidden>Members panel</div>
+    ${thirdTab ? '<div data-a11y-related="panel-third" id="panel-third" role="tabpanel" aria-labelledby="tab-third" hidden>Members panel</div>' : ''}
     <button type="button">After</button>
     <script>
       (() => {
         const list = document.querySelector('[data-a11y-tabs]');
         const tabs = Array.from(list.querySelectorAll('[role="tab"], [data-key]'));
-        const panels = ['first', 'second', 'third'].map(key => document.getElementById('panel-' + key));
+        const panels = [${thirdTab ? "'first', 'second', 'third'" : "'first', 'second'"}].map(key => document.getElementById('panel-' + key));
         const select = key => {
           tabs.forEach(tab => {
             const active = tab.dataset.key === key;
@@ -260,6 +264,15 @@ export const TABS_FIXTURES: readonly TabsFixture[] = [
     summary: 'a horizontal LTR manual-activation tablist',
     facts: baseFacts(),
     html: groupHtml(),
+  },
+  {
+    id: 'conforming-tablist-two-tabs',
+    summary: 'a two-tab set that wraps both arrows at both boundaries',
+    facts: baseFacts({
+      tabRelations: ['first', 'second'],
+      panelRelations: ['panel-first', 'panel-second'],
+    }),
+    html: groupHtml({thirdTab: false}),
   },
   {
     id: 'conforming-tablist-rtl',
@@ -499,6 +512,12 @@ export const TABS_FIXTURES: readonly TabsFixture[] = [
     html: groupHtml({subject: 'first-panel', firstPanelCssHidden: true}),
   },
   {
+    id: 'violating-panel-active-clipped',
+    summary: 'an active positive-size tabpanel fully clipped from paint',
+    facts: panelFacts(),
+    html: groupHtml({subject: 'first-panel', firstPanelClipped: true}),
+  },
+  {
     id: 'violating-panel-active-transparent',
     summary: 'an active tabpanel rendered fully transparent',
     facts: panelFacts(),
@@ -515,6 +534,12 @@ export const TABS_FIXTURES: readonly TabsFixture[] = [
     summary: 'the selected panel is hidden by CSS during selection',
     facts: baseFacts(),
     html: groupHtml({firstPanelCssHidden: true}),
+  },
+  {
+    id: 'violating-selection-active-clipped',
+    summary: 'the selected positive-size panel is fully clipped from paint',
+    facts: baseFacts(),
+    html: groupHtml({firstPanelClipped: true}),
   },
   {
     id: 'violating-selection-active-transparent',
@@ -557,6 +582,16 @@ export const TABS_FIXTURES: readonly TabsFixture[] = [
     summary: 'a tablist that moves forward but not back',
     facts: baseFacts(),
     html: groupHtml({arrow: 'one-way'}),
+  },
+  {
+    id: 'violating-two-tab-arrow-no-wrap',
+    summary:
+      'a two-tab set whose arrows move only inward and stop at both outward boundaries',
+    facts: baseFacts({
+      tabRelations: ['first', 'second'],
+      panelRelations: ['panel-first', 'panel-second'],
+    }),
+    html: groupHtml({arrow: 'no-wrap', thirdTab: false}),
   },
   {
     id: 'violating-arrow-no-wrap',
@@ -655,12 +690,14 @@ export const TABS_MUTATIONS: Readonly<Record<string, readonly string[]>> = {
   'tabs.tabpanel.name-exposed': ['violating-panel-name'],
   'tabs.tabpanel.active-state-matches': [
     'violating-panel-active-hidden',
+    'violating-panel-active-clipped',
     'violating-panel-active-transparent',
     'violating-panel-inactive-visible',
   ],
   'tabs.selection.exposed': [
     'violating-selection-two',
     'violating-selection-active-css-hidden',
+    'violating-selection-active-clipped',
     'violating-selection-active-transparent',
     'violating-selection-inactive-css-visible',
   ],
@@ -670,6 +707,7 @@ export const TABS_MUTATIONS: Readonly<Record<string, readonly string[]>> = {
     'violating-arrow-one-way',
   ],
   'tabs.focus.wraps-ends': [
+    'violating-two-tab-arrow-no-wrap',
     'violating-arrow-no-wrap',
     'violating-rtl-arrow-no-wrap',
   ],
@@ -740,6 +778,8 @@ const EXPECTED_MUTATION_FAILURES: Readonly<Record<string, string>> = {
     'the browser computes no accessible name for this tabpanel',
   'tabs.tabpanel.active-state-matches:violating-panel-active-hidden':
     'the binding declares this tabpanel active, but the browser reports it hidden',
+  'tabs.tabpanel.active-state-matches:violating-panel-active-clipped':
+    'the binding declares this tabpanel active, but the browser reports it hidden',
   'tabs.tabpanel.active-state-matches:violating-panel-active-transparent':
     'the binding declares this tabpanel active, but the browser reports it hidden',
   'tabs.tabpanel.active-state-matches:violating-panel-inactive-visible':
@@ -747,6 +787,8 @@ const EXPECTED_MUTATION_FAILURES: Readonly<Record<string, string>> = {
   'tabs.selection.exposed:violating-selection-two':
     'expected exactly "first" selected, but the browser exposes "first", "second"',
   'tabs.selection.exposed:violating-selection-active-css-hidden':
+    'the "panel-first" panel is hidden while "first" is selected',
+  'tabs.selection.exposed:violating-selection-active-clipped':
     'the "panel-first" panel is hidden while "first" is selected',
   'tabs.selection.exposed:violating-selection-active-transparent':
     'the "panel-first" panel is hidden while "first" is selected',
@@ -760,6 +802,8 @@ const EXPECTED_MUTATION_FAILURES: Readonly<Record<string, string>> = {
     'pressing ArrowRight from "first" did not focus the next available tab "second"',
   'tabs.focus.arrow-round-trip:violating-arrow-one-way':
     'pressing ArrowRight moved to "second", but pressing ArrowLeft did not restore focus to "first"',
+  'tabs.focus.wraps-ends:violating-two-tab-arrow-no-wrap':
+    'pressing ArrowLeft outward from "first" did not wrap focus to "second"',
   'tabs.focus.wraps-ends:violating-arrow-no-wrap':
     'neither ArrowLeft nor ArrowRight wrapped focus from the first tab "first" to the last tab "third"',
   'tabs.focus.wraps-ends:violating-rtl-arrow-no-wrap':
