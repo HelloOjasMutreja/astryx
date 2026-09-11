@@ -68,14 +68,17 @@ ruleTester.run('no-hover-on-disabled', rule, {
     {
       code: `const handlers = {':hover': () => {}};`,
     },
-    // :hover combined with a pseudo-ELEMENT in one of the three files this PR
-    // hand-verified is JS-gated (facebook/astryx#5442) stays unreported —
-    // everywhere else, the same key is reported (see invalid below).
+    // :hover combined with a pseudo-ELEMENT, under the exact hand-verified
+    // `hoverOnPointer` style key (facebook/astryx#5442), stays unreported —
+    // everywhere else, and under any OTHER key in these same files, the same
+    // shape is still reported (see invalid below).
     {
       code: `
         import * as stylex from '@stylexjs/stylex';
         const styles = stylex.create({
-          overlay: {opacity: {default: 0, ':hover::after': 1}},
+          hoverOnPointer: {
+            '@media (hover: hover)': {opacity: {default: 0, ':hover::after': 1}},
+          },
         });
       `,
       filename: '/repo/packages/core/src/SelectableCard/SelectableCard.tsx',
@@ -84,7 +87,9 @@ ruleTester.run('no-hover-on-disabled', rule, {
       code: `
         import * as stylex from '@stylexjs/stylex';
         const styles = stylex.create({
-          overlay: {opacity: {default: 0, ':hover::before': 1}},
+          hoverOnPointer: {
+            '@media (hover: hover)': {opacity: {default: 0, ':hover::before': 1}},
+          },
         });
       `,
       filename: '/repo/packages/core/src/Thumbnail/Thumbnail.tsx',
@@ -93,7 +98,9 @@ ruleTester.run('no-hover-on-disabled', rule, {
       code: `
         import * as stylex from '@stylexjs/stylex';
         const styles = stylex.create({
-          overlay: {opacity: {default: 0, ':hover::after': 1}},
+          hoverOnPointer: {
+            '@media (hover: hover)': {opacity: {default: 0, ':hover::after': 1}},
+          },
         });
       `,
       filename: '/repo/packages/core/src/ClickableCard/ClickableCard.tsx',
@@ -186,6 +193,42 @@ ruleTester.run('no-hover-on-disabled', rule, {
           tab: {opacity: {default: 0, ':hover::before': 1}},
         });
       `,
+      errors: [{messageId: 'unguardedHoverPseudoElement'}],
+      output: null,
+    },
+    // The exemption is scoped to the verified `hoverOnPointer` style key,
+    // not the whole file: a second, unrelated `:hover::before` under a
+    // different key in one of the three exempt files is still reported.
+    {
+      code: `
+        import * as stylex from '@stylexjs/stylex';
+        const styles = stylex.create({
+          badge: {opacity: {default: 0, ':hover::before': 1}},
+        });
+      `,
+      filename: '/repo/packages/core/src/SelectableCard/SelectableCard.tsx',
+      errors: [{messageId: 'unguardedHoverPseudoElement'}],
+      output: null,
+    },
+    {
+      code: `
+        import * as stylex from '@stylexjs/stylex';
+        const styles = stylex.create({
+          badge: {opacity: {default: 0, ':hover::after': 1}},
+        });
+      `,
+      filename: '/repo/packages/core/src/Thumbnail/Thumbnail.tsx',
+      errors: [{messageId: 'unguardedHoverPseudoElement'}],
+      output: null,
+    },
+    {
+      code: `
+        import * as stylex from '@stylexjs/stylex';
+        const styles = stylex.create({
+          badge: {opacity: {default: 0, ':hover::before': 1}},
+        });
+      `,
+      filename: '/repo/packages/core/src/ClickableCard/ClickableCard.tsx',
       errors: [{messageId: 'unguardedHoverPseudoElement'}],
       output: null,
     },
