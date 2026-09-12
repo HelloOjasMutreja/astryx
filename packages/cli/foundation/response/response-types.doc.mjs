@@ -197,12 +197,12 @@ export const doc = {
     {
       value: 'theme.list',
       description:
-        'Every bundled theme as a ThemeListEntry[]: each with slug, displayName, description, and a maintained flag.',
+        'Every bundled or installed integration theme as a ThemeListEntry[]: each with slug, displayName, description, maintained flag, and owner package.',
     },
     {
       value: 'theme.add',
       description:
-        'A scaffold receipt: resolved slug, displayName, maintained flag, outputDir (relative to cwd), the theme entry file, its exportName, and the files written.',
+        'A scaffold receipt: resolved slug, displayName, maintained flag, owner package, outputDir (relative to cwd), the theme entry file, its exportName, and the files written.',
     },
     {
       value: 'theme.template',
@@ -252,6 +252,16 @@ export const doc = {
     },
 
     // integration authoring
+    {
+      value: 'integration.add',
+      description:
+        'A contribution-writer receipt: kind, name, optional root {path, created}, integration-manifest path, every affected project-relative path, written, and dryRun.',
+    },
+    {
+      value: 'integration.pack-check',
+      description:
+        'The packed-package check: package identity, tarball facts, local and packed contribution inventories, and issues.',
+    },
     {
       value: 'integration.validate',
       description:

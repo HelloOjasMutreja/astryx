@@ -200,14 +200,33 @@ if (firstTemplate) {
 add('template nonexistent', ['template', 'nonexistent99'],
   () => apiCall(api.template, 'nonexistent99'));
 
+// Integration authoring — each per-kind API must match the generic CLI route.
+add('integration add component (dry run)',
+  ['integration', 'add', 'component', 'ParityProbe', '--dry-run'],
+  () => apiCall(api.integrationAddComponent, 'ParityProbe', {cwd: ROOT, dryRun: true}));
+add('integration add doc (dry run)',
+  ['integration', 'add', 'doc', 'parity-probe', '--dry-run'],
+  () => apiCall(api.integrationAddDoc, 'parity-probe', {cwd: ROOT, dryRun: true}));
+add('integration add template (dry run)',
+  ['integration', 'add', 'template', 'parity-probe', '--type', 'block', '--dry-run'],
+  () => apiCall(api.integrationAddTemplate, 'parity-probe', {cwd: ROOT, type: 'block', dryRun: true}));
+add('integration add codemod (dry run)',
+  ['integration', 'add', 'codemod', 'parity-probe', '--to', '9.9.9', '--dry-run'],
+  () => apiCall(api.integrationAddCodemod, 'parity-probe', {cwd: ROOT, to: '9.9.9', dryRun: true}));
+add('integration add agent-doc (dry run)',
+  ['integration', 'add', 'agent-doc', 'Use ParityProbe.', '--dry-run'],
+  () => apiCall(api.integrationAddAgentDoc, 'Use ParityProbe.', {cwd: ROOT, dryRun: true}));
+add('integration add theme (dry run)',
+  ['integration', 'add', 'theme', 'parity-probe', '--dry-run'],
+  () => apiCall(api.integrationAddTheme, 'parity-probe', {cwd: ROOT, dryRun: true}));
+
 // Theme list + add error path (read-only; never scaffolds files here).
-// `theme list` / `theme add --list` are served by the dedicated themeList()
-// leaf (the CLI routes the --list affordance there); themeAdd() now only
-// scaffolds a named slug and throws on a missing/unknown one.
+// The CLI routes its project-aware list surfaces to themeListAvailable(); the
+// synchronous themeList() export stays bundled-only for API compatibility.
 add('theme list', ['theme', 'list'],
-  () => apiCall(api.themeList));
+  () => apiCall(api.themeListAvailable, {cwd: ROOT}));
 add('theme add --list', ['theme', 'add', '--list'],
-  () => apiCall(api.themeList));
+  () => apiCall(api.themeListAvailable, {cwd: ROOT}));
 add('theme add nonexistent', ['theme', 'add', 'nonexistent99'],
   () => apiCall(api.themeAdd, 'nonexistent99', {cwd: ROOT}));
 
