@@ -77,6 +77,16 @@ function runPnpm(args: string[], cwd: string) {
     : run('pnpm', args, cwd);
 }
 
+// The non-throwing counterpart to runPnpm, for the cases below where a
+// failing pnpm invocation is the assertion under test, not an error: same
+// cmd.exe routing on win32, but returns spawnSync's result object instead of
+// throwing on a non-zero exit.
+function spawnPnpm(args: string[], options: Parameters<typeof spawnSync>[2]) {
+  return process.platform === 'win32'
+    ? spawnSync('cmd.exe', ['/d', '/s', '/c', 'pnpm', ...args], options)
+    : spawnSync('pnpm', args, options);
+}
+
 function edit(file: string, transform: (source: string) => string) {
   const source = fs.readFileSync(file, 'utf8');
   const next = transform(source);
@@ -2138,7 +2148,7 @@ describeCanonical('canonical pnpm build approval', () => {
   // spawnSync rather than execFileSync's throwing form: a failing install is
   // the assertion in half these cases, not an error.
   const install = (app: string) =>
-    spawnSync('pnpm', ['install'], {
+    spawnPnpm(['install'], {
       cwd: app,
       encoding: 'utf8',
       env: {...process.env, CI: 'true'},
@@ -2162,7 +2172,7 @@ describeCanonical('canonical pnpm build approval', () => {
     expect(
       fs.existsSync(path.join(app, 'node_modules', PACKAGE, 'package.json')),
     ).toBe(true);
-    const built = spawnSync('pnpm', ['build'], {
+    const built = spawnPnpm(['build'], {
       cwd: app,
       encoding: 'utf8',
       env: {...process.env, CI: 'true'},
