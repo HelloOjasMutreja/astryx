@@ -11,7 +11,8 @@
 
 import {useState} from 'react';
 import {readFileSync} from 'node:fs';
-import {describe, it, expect, vi, beforeEach} from 'vitest';
+import {describe, it, expect, vi, beforeEach, afterEach} from 'vitest';
+import {renderToString} from 'react-dom/server';
 import {render, screen, fireEvent} from '@testing-library/react';
 import {
   Dialog,
@@ -1020,6 +1021,26 @@ describe('Dialog', () => {
 
       expect(opener).toHaveFocus();
       opener.remove();
+    });
+
+    describe('server rendering', () => {
+      afterEach(() => {
+        vi.unstubAllGlobals();
+      });
+
+      it('renders an initially open dialog without a document', () => {
+        // The trigger is captured during render, which also runs on the
+        // server where there is no document to read activeElement from.
+        vi.stubGlobal('document', undefined);
+
+        expect(() =>
+          renderToString(
+            <Dialog isOpen={true} onOpenChange={() => {}}>
+              <DialogHeader title="Review" />
+            </Dialog>,
+          ),
+        ).not.toThrow();
+      });
     });
   });
 });
