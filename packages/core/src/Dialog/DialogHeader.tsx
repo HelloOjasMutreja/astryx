@@ -162,8 +162,7 @@ export function DialogHeader({
   const t = useTranslator();
   const titleRef = useRef<HTMLHeadingElement>(null);
   const dialogContext = useDialogContext();
-  const shouldAutoFocus =
-    dialogContext?.isInline !== true && dialogContext?.isOpen !== false;
+  const shouldAutoFocus = dialogContext?.isInline !== true;
   const titleId = dialogContext?.titleId;
   // A node subtitle may be `0`: render it inside Text instead of letting a
   // truthiness check leak a bare text node, and skip only empty values.
@@ -182,10 +181,7 @@ export function DialogHeader({
 
   // Auto-focus the title when mounted for screen reader accessibility.
   // Inline dialogs are documentation/showcase previews, so suppress focus to
-  // avoid stealing scroll position from the surrounding page. A dialog whose
-  // content mounts before it opens (isOpen === false) must not steal focus
-  // either — nothing is visible yet, and it would corrupt the trigger Dialog
-  // captures for focus restoration on close (#5637).
+  // avoid stealing scroll position from the surrounding page.
   // The parent Dialog detects this title (by `titleId`) via a callback ref to
   // set its default aria-labelledby — no registration handshake needed here.
   useEffect(() => {
