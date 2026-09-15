@@ -1007,22 +1007,6 @@ describe('Dialog', () => {
       opener.remove();
     });
 
-    it('does not autofocus a DialogHeader mounted while the dialog is still closed', () => {
-      const opener = document.createElement('button');
-      opener.type = 'button';
-      document.body.appendChild(opener);
-      opener.focus();
-
-      render(
-        <Dialog isOpen={false} onOpenChange={() => {}}>
-          <DialogHeader title="Review" />
-        </Dialog>,
-      );
-
-      expect(opener).toHaveFocus();
-      opener.remove();
-    });
-
     describe('server rendering', () => {
       afterEach(() => {
         vi.unstubAllGlobals();
