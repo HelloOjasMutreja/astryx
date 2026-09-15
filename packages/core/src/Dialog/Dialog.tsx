@@ -504,8 +504,11 @@ export function Dialog({
   // Starts false rather than isOpen: a Dialog first mounted with
   // isOpen={true} (e.g. AlertDialog) still needs its rising edge to fire
   // on that very first render, not be treated as already-open.
+  //
+  // There is no document during server rendering, so leave the ref alone
+  // there; the client's first render (the hydration pass) captures it.
   const wasOpenRef = useRef(false);
-  if (isOpen && !wasOpenRef.current) {
+  if (isOpen && !wasOpenRef.current && typeof document !== 'undefined') {
     triggerElementRef.current = document.activeElement as HTMLElement | null;
   }
   wasOpenRef.current = isOpen;
