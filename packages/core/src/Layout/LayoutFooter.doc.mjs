@@ -15,6 +15,26 @@ export const docs = {
     },
     wrapper: {
       component: 'Layout',
+      // Route through the footer slot (children would land in the content
+      // slot), and give the scaffold a content region tall and wide enough
+      // that the footer visibly docks at the bottom of the stage.
+      slotProp: 'footer',
+      props: {
+        height: 'auto',
+        content: {
+          __element: 'LayoutContent',
+          props: {},
+          children: {
+            __element: 'Center',
+            props: {minHeight: 160, width: 360},
+            children: {
+              __element: 'Text',
+              props: {color: 'secondary'},
+              children: 'Main content area',
+            },
+          },
+        },
+      },
     },
   },
   props: [
