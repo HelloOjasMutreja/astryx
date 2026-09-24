@@ -1013,8 +1013,8 @@ describe('Dialog', () => {
       });
 
       it('renders an initially open dialog without a document', () => {
-        // The trigger is captured during render, which also runs on the
-        // server where there is no document to read activeElement from.
+        // The trigger is captured in a layout effect, which never runs
+        // during server rendering, but this guards the SSR path either way.
         vi.stubGlobal('document', undefined);
 
         expect(() =>
@@ -1025,6 +1025,52 @@ describe('Dialog', () => {
           ),
         ).not.toThrow();
       });
+    });
+
+    it('keeps the external trigger as the return target through focus churn while still open', () => {
+      // The capture only fires on the isOpen false→true edge (wasOpenRef),
+      // so it must not be clobbered by anything that moves focus while the
+      // dialog stays open — the shape of an interrupted close that reopens
+      // before the trigger ref is nulled.
+      const opener = document.createElement('button');
+      opener.type = 'button';
+      document.body.appendChild(opener);
+      opener.focus();
+
+      const {rerender} = render(
+        <Dialog isOpen={false} onOpenChange={() => {}}>
+          {null}
+        </Dialog>,
+      );
+
+      rerender(
+        <Dialog isOpen={true} onOpenChange={() => {}}>
+          <DialogHeader title="Review" />
+        </Dialog>,
+      );
+      expect(screen.getByRole('heading', {name: 'Review'})).toHaveFocus();
+
+      // Something else grabs focus while the dialog is still open — a retry,
+      // an unrelated re-render, anything that is not the closing edge.
+      const distractor = document.createElement('button');
+      distractor.type = 'button';
+      document.body.appendChild(distractor);
+      distractor.focus();
+      rerender(
+        <Dialog isOpen={true} onOpenChange={() => {}}>
+          <DialogHeader title="Review" />
+        </Dialog>,
+      );
+
+      rerender(
+        <Dialog isOpen={false} onOpenChange={() => {}}>
+          {null}
+        </Dialog>,
+      );
+
+      expect(opener).toHaveFocus();
+      opener.remove();
+      distractor.remove();
     });
   });
 });
