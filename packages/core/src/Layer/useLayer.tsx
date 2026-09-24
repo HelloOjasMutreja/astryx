@@ -374,6 +374,11 @@ function toCssLength(value: number | string): string {
  * measured directly, not assumed — so checking synchronously would always see
  * zero animations and defeat the whole guard. One frame is enough for the UA
  * to have started it.
+ *
+ * Only a FINITE animation is waited on. `Animation.finished` never resolves
+ * for one with `iterationCount: Infinity` (it never reaches the finished play
+ * state), so a continuously-animating ancestor — `StatusDot`'s pulse, e.g. —
+ * would otherwise block a layer that anchors to it from ever opening.
  */
 function waitForAncestorAnimations(
   anchor: HTMLElement,
@@ -393,9 +398,14 @@ function waitForAncestorAnimations(
         animation.effect instanceof KeyframeEffect
           ? animation.effect.target
           : null;
-      return (
-        target instanceof Node && (target === anchor || target.contains(anchor))
-      );
+      if (
+        !(target instanceof Node) ||
+        !(target === anchor || target.contains(anchor))
+      ) {
+        return false;
+      }
+      const timing = animation.effect?.getComputedTiming();
+      return timing?.iterations !== Infinity;
     });
     if (running.length === 0) {
       onReady();
@@ -763,7 +773,15 @@ function useLayerImplementation(
     }
     const observer = new ResizeObserver(entries => {
       const entry = entries[0];
-      if (entry && (entry.contentRect.width || entry.contentRect.height)) {
+      // `entry.contentRect` alone is not enough: a text-only Tooltip/HoverCard
+      // trigger is typically an inline element, whose observed content box
+      // can stay empty even once it has a real border box (line boxes are
+      // not part of the content box), which would leave this wait never
+      // resolving. Fall back to re-measuring the anchor itself.
+      const hasContentRect =
+        entry != null && (entry.contentRect.width || entry.contentRect.height);
+      const box = hasContentRect ? null : anchor.getBoundingClientRect();
+      if (hasContentRect || box?.width || box?.height) {
         observer.disconnect();
         pendingAnchorWaitRef.current = waitForAncestorAnimations(
           anchor,

@@ -1,14 +1,16 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 /**
- * @file anchorReadiness.chromium.spec.ts
+ * @file anchorReadiness.a11y.browser.spec.ts
  * @input Uses Playwright, a built Storybook, the LayerDismissal stories
- * @output Real-Chromium proof that a controlled Tooltip/HoverCard opened
- *   inside a Dialog anchors to its trigger instead of the viewport corner
+ * @output Real-Chromium and real-WebKit proof that a controlled
+ *   Tooltip/HoverCard opened inside a Dialog anchors to its trigger instead
+ *   of the viewport corner
  * @position High-fidelity lane; jsdom's getBoundingClientRect and
  *   ResizeObserver are both no-ops, so the anchor-readiness wait in
  *   useLayer's show() (#5398) can only be proven against a real layout
- *   engine.
+ *   engine. Cross-browser because anchor-geometry resolution is exactly the
+ *   kind of engine-specific behavior a single browser cannot speak for.
  *
  * SYNC: The story this reads is PinnedTooltipInModal in
  *   apps/storybook/stories/LayerDismissal.stories.tsx.
@@ -109,4 +111,17 @@ test('a controlled HoverCard opened inside a Dialog anchors to its trigger', asy
     return;
   }
   expect(edgeGap(cardBox, triggerBox)).toBeLessThan(MAX_ANCHOR_GAP_PX);
+});
+
+test('a controlled Tooltip still opens when its trigger sits inside a continuously animating ancestor', async ({
+  page,
+}) => {
+  // `Animation.finished` never resolves for an infinite-iteration animation,
+  // so the anchor-readiness wait must not treat it the way it treats a
+  // finite entry transition (e.g. Dialog's own open animation) — otherwise a
+  // trigger that never stops animating (a pulsing StatusDot, e.g.) would
+  // leave its Tooltip stuck waiting forever.
+  await openStory(page, 'core-layer-dismissal--continuously-animating-trigger');
+  const tooltip = page.getByRole('tooltip');
+  await expect(tooltip).toBeVisible({timeout: 5_000});
 });
