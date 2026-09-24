@@ -1016,3 +1016,41 @@ function PinnedTooltipInModalExample() {
 export const PinnedTooltipInModal: Story = {
   render: () => <PinnedTooltipInModalExample />,
 };
+
+const pulse = stylex.keyframes({
+  '0%': {transform: 'scale(1)'},
+  '50%': {transform: 'scale(1.4)'},
+  '100%': {transform: 'scale(1)'},
+});
+
+const continuousAnimationStyles = stylex.create({
+  wrapper: {
+    display: 'inline-block',
+    animationName: pulse,
+    animationDuration: '600ms',
+    animationIterationCount: 'infinite',
+  },
+});
+
+/**
+ * A controlled Tooltip anchored to a trigger sitting inside a continuously
+ * (infinitely) animating ancestor. `waitForAncestorAnimations` must not wait
+ * on that animation's `finished` promise, which never resolves for one with
+ * `iterationCount: Infinity` — only a genuinely finite entry animation
+ * (Dialog's own open transition, e.g.) should hold the layer open.
+ */
+function ContinuouslyAnimatingTriggerExample() {
+  const [isOpen, setIsOpen] = useState(true);
+
+  return (
+    <div {...stylex.props(continuousAnimationStyles.wrapper)}>
+      <Tooltip isOpen={isOpen} onOpenChange={setIsOpen} content="Still opens">
+        <Button label="Pulsing trigger" variant="secondary" />
+      </Tooltip>
+    </div>
+  );
+}
+
+export const ContinuouslyAnimatingTrigger: Story = {
+  render: () => <ContinuouslyAnimatingTriggerExample />,
+};
