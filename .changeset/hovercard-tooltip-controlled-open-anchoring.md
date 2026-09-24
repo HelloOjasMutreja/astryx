@@ -6,6 +6,6 @@
 
 `Dialog` mounts its children before it opens (`isOpen` gates `showModal()`, not rendering), so a `HoverCard`/`Tooltip` inside one with a controlled `isOpen={true}` set from the start runs its show effect while the trigger is inside a still-non-modal `<dialog>` and has no box. A trigger with no box isn't a valid CSS anchor: the popover's `position-anchor` resolves to its fallback position, the viewport corner, and — unlike a live layout change — that resolution doesn't get revisited once the trigger later gets a box when the dialog actually opens. The popover stays stuck there for the rest of that open.
 
-Both hooks' show-on-mount and controlled-open effects now wait for the trigger to actually have a layout box (immediately, if it already does) before calling `layer.show()`, via a small shared `showWhenAnchored` helper in `Layer/`.
+`Layer`'s own `show()` now waits for the trigger to actually have a layout box (immediately, if it already does — via `ResizeObserver` otherwise) and for any running, finite ancestor animation to settle, before resolving the popover's anchor. Every context-mode caller (`HoverCard`, `Tooltip`, and anything else built on `useLayer`) gets this for free, since it lives in the one place every context-mode `show()` funnels through rather than in each caller's own effect.
 
 @HelloOjasMutreja
