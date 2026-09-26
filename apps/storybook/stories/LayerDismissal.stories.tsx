@@ -1017,6 +1017,60 @@ export const PinnedTooltipInModal: Story = {
   render: () => <PinnedTooltipInModalExample />,
 };
 
+/**
+ * Same closed-then-open Dialog shape as PinnedTooltipInModal, but the
+ * Tooltip's trigger is bare text — Tooltip wraps text-only children in an
+ * inline `<span>` rather than a block-level control, which is exactly the
+ * shape whose content box can stay empty in the delayed (ResizeObserver)
+ * anchor-readiness path (#5398): a browser regression against a
+ * button-shaped trigger cannot prove that fallback.
+ */
+function TextOnlyTriggerInModalExample() {
+  const [isOpen, setIsOpen] = useState(false);
+  const [isTipOpen, setIsTipOpen] = useState(true);
+
+  return (
+    <>
+      <Button
+        label="Open modal"
+        variant="secondary"
+        onClick={() => {
+          setIsTipOpen(true);
+          setIsOpen(true);
+        }}
+      />
+      <Dialog
+        isOpen={isOpen}
+        onOpenChange={setIsOpen}
+        width={520}
+        aria-label="Modal with a text-only pinned tooltip">
+        <Layout
+          header={
+            <DialogHeader
+              title="Modal with a text-only pinned tooltip"
+              onOpenChange={setIsOpen}
+            />
+          }
+          content={
+            <LayoutContent>
+              <Tooltip
+                isOpen={isTipOpen}
+                onOpenChange={setIsTipOpen}
+                content="Still anchors">
+                Text-only trigger
+              </Tooltip>
+            </LayoutContent>
+          }
+        />
+      </Dialog>
+    </>
+  );
+}
+
+export const TextOnlyTriggerInModal: Story = {
+  render: () => <TextOnlyTriggerInModalExample />,
+};
+
 const pulse = stylex.keyframes({
   '0%': {transform: 'scale(1)'},
   '50%': {transform: 'scale(1.4)'},
