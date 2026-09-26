@@ -499,6 +499,36 @@ describe('Button', () => {
     expect(handleClick).not.toHaveBeenCalled();
   });
 
+  it('does not let a click on a busy button reach a wrapping ancestor handler', async () => {
+    // A native `disabled` element never dispatches a click, so it never
+    // reaches an ancestor either. aria-disabled (busy-only) is a real,
+    // interactive element that still dispatches one — preventDefault alone
+    // only cancels the button's own default action, not propagation, so
+    // an unrelated wrapper (a clickable row/card/backdrop) would otherwise
+    // still fire.
+    const user = userEvent.setup();
+    const ancestorClick = vi.fn();
+    render(
+      <div onClick={ancestorClick}>
+        <Button label="Save" isLoading />
+      </div>,
+    );
+    await user.click(screen.getByRole('button'));
+    expect(ancestorClick).not.toHaveBeenCalled();
+  });
+
+  it('does not let a click on a busy-only anchor Button reach a wrapping ancestor handler', async () => {
+    const user = userEvent.setup();
+    const ancestorClick = vi.fn();
+    render(
+      <div onClick={ancestorClick}>
+        <Button label="Docs" href="https://example.com" isLoading />
+      </div>,
+    );
+    await user.click(screen.getByRole('link'));
+    expect(ancestorClick).not.toHaveBeenCalled();
+  });
+
   it('suppresses activation keys but passes other keys while aria-disabled via isLoading', async () => {
     const user = userEvent.setup();
     const handleKeyDown = vi.fn();
