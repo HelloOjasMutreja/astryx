@@ -616,6 +616,16 @@ export function Button({
     // a re-click while pending starts a fresh action that interrupts the prior.
     if (buttonDisabled || (actionInFlightRef.current && !isInterruptible)) {
       e.preventDefault();
+      // A native `disabled` element never dispatches a click at all, so it
+      // never reaches a wrapping element's own handler either. An
+      // aria-disabled button (busy-only, or with a tooltip) is still a real,
+      // interactive element the DOM keeps dispatching clicks on —
+      // preventDefault alone only cancels the button's OWN default action
+      // (form submit, link navigation), not propagation. Without this, an
+      // unavailable Button inside a clickable row/card/backdrop still
+      // triggers that ancestor's action, which the previously native-disabled
+      // control never did.
+      e.stopPropagation();
       return;
     }
     props.onClick?.(e);
