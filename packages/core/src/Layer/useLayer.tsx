@@ -380,6 +380,14 @@ function toCssLength(value: number | string): string {
  * state), so a continuously-animating ancestor — `StatusDot`'s pulse, e.g. —
  * would otherwise block a layer that anchors to it from ever opening.
  */
+
+/**
+ * Upper bound on how many animation frames `show()` polls an anchor for a
+ * real layout box before giving up and opening anyway. See the bounded-poll
+ * comment where this is used, in `show()`.
+ */
+const ANCHOR_WAIT_MAX_FRAMES = 60;
+
 function waitForAncestorAnimations(
   anchor: HTMLElement,
   onReady: () => void,
@@ -606,6 +614,13 @@ function useLayerImplementation(
   // reference lets the ref callback recognize and reopen its replacement.
   const openedPopoverRef = useRef<HTMLElement | null>(null);
   const triggerRef = useRef<HTMLElement | null>(null);
+  // A detach (contextRef(null)) still in its transient window — cancelled if
+  // the same element reattaches before the microtask runs, applied
+  // (removing the anchor name) otherwise. See contextRef below.
+  const pendingTriggerDetachRef = useRef<{
+    element: HTMLElement;
+    cancelled: boolean;
+  } | null>(null);
   // Context layers place a persistent inert marker at their real JSX position.
   // Its parent tells us whether the final layer can stay inline or needs a
   // corrective portal, including after the render call moves.
@@ -760,37 +775,83 @@ function useLayerImplementation(
       return;
     }
     const rect = anchor.getBoundingClientRect();
+    if (rect.width !== 0 || rect.height !== 0) {
+      pendingAnchorWaitRef.current = waitForAncestorAnimations(anchor, openNow);
+      return;
+    }
     // No API to wait on (jsdom, an old browser): same fallback
     // sharedResizeObserver.ts uses for the same gap — skip the wait rather
     // than throw, and open against whatever box is available now.
     if (
-      rect.width !== 0 ||
-      rect.height !== 0 ||
-      typeof ResizeObserver === 'undefined'
+      typeof ResizeObserver === 'undefined' ||
+      typeof requestAnimationFrame === 'undefined'
     ) {
       pendingAnchorWaitRef.current = waitForAncestorAnimations(anchor, openNow);
       return;
     }
+    // Two readiness signals race, whichever resolves first wins:
+    //
+    // - A real ResizeObserver, same as before. Fast for a block-level
+    //   trigger (the common case) — a real browser typically delivers the
+    //   first entry within a frame of the anchor becoming visible.
+    // - A bounded rAF poll of the anchor's own getBoundingClientRect(). A
+    //   ResizeObserver reliably does not deliver ANY entry at all for a
+    //   purely `display: inline`, non-replaced box — exactly the shape a
+    //   text-only Tooltip/HoverCard trigger's wrapper `<span>` is — so
+    //   observing one alone can leave this wait never resolving, not just
+    //   resolving late (#5398). Bounded because an environment that never
+    //   produces real layout (jsdom's getBoundingClientRect is always
+    //   all-zero, when nothing else has already stubbed a resolvable
+    //   ResizeObserver) would otherwise reschedule a frame forever, which
+    //   under fake timers (`vi.runAllTimers()`) never terminates.
+    //
+    // Racing both, rather than polling alone, keeps a synchronous-firing
+    // test ResizeObserver stub (several component tests use one, modeling a
+    // real observer's typical behavior for an already-visible element)
+    // resolving exactly as fast as it always did — the poll below never even
+    // starts in that case.
+    const state: {resolved: boolean; rafHandle: number | null} = {
+      resolved: false,
+      rafHandle: null,
+    };
+    const resolve = () => {
+      if (state.resolved) {
+        return;
+      }
+      state.resolved = true;
+      observer.disconnect();
+      if (state.rafHandle != null) {
+        cancelAnimationFrame(state.rafHandle);
+      }
+      pendingAnchorWaitRef.current = waitForAncestorAnimations(anchor, openNow);
+    };
     const observer = new ResizeObserver(entries => {
       const entry = entries[0];
-      // `entry.contentRect` alone is not enough: a text-only Tooltip/HoverCard
-      // trigger is typically an inline element, whose observed content box
-      // can stay empty even once it has a real border box (line boxes are
-      // not part of the content box), which would leave this wait never
-      // resolving. Fall back to re-measuring the anchor itself.
-      const hasContentRect =
-        entry != null && (entry.contentRect.width || entry.contentRect.height);
-      const box = hasContentRect ? null : anchor.getBoundingClientRect();
-      if (hasContentRect || box?.width || box?.height) {
-        observer.disconnect();
-        pendingAnchorWaitRef.current = waitForAncestorAnimations(
-          anchor,
-          openNow,
-        );
+      if (entry && (entry.contentRect.width || entry.contentRect.height)) {
+        resolve();
       }
     });
     observer.observe(anchor);
-    pendingAnchorWaitRef.current = () => observer.disconnect();
+    if (!state.resolved) {
+      let framesWaited = 0;
+      const poll = () => {
+        const box = anchor.getBoundingClientRect();
+        framesWaited += 1;
+        if (box.width || box.height || framesWaited >= ANCHOR_WAIT_MAX_FRAMES) {
+          resolve();
+          return;
+        }
+        state.rafHandle = requestAnimationFrame(poll);
+      };
+      state.rafHandle = requestAnimationFrame(poll);
+    }
+    pendingAnchorWaitRef.current = () => {
+      state.resolved = true;
+      observer.disconnect();
+      if (state.rafHandle != null) {
+        cancelAnimationFrame(state.rafHandle);
+      }
+    };
   }, [mode, openNow, cancelPendingAnchorWait]);
 
   const hide = useCallback(() => {
@@ -833,17 +894,42 @@ function useLayerImplementation(
   // trigger never actually left the document.
   //
   // `addAnchorName` is already idempotent (skips the DOM write if the name
-  // is already present), so the fix is just to stop removing eagerly here:
-  // only actually clear the name when a DIFFERENT non-null element claims
-  // it, in the branch below. A genuine unmount (a `null` call with no
-  // following reattach) leaves the name on an element that is being garbage
-  // collected — inert, since a disconnected element takes no part in anchor
-  // positioning.
+  // is already present), so a `null` call defers the removal instead of
+  // applying it immediately: `triggerRef.current` is left pointing at the
+  // stale element, and a microtask is queued to actually remove its anchor
+  // name — but only if nothing has reattached to that exact element by
+  // then. A transient null-then-same-element churn cancels the pending
+  // removal on the reattach, so the anchor name (and the layer's anchor
+  // resolution) is never disturbed. A `null` followed by a DIFFERENT real
+  // element still removes the old element's name immediately, in the same
+  // synchronous call that adds the new one — no need to wait, since that is
+  // a genuine reassignment, not churn. A `null` followed by nothing (a real
+  // unmount) lets the microtask's removal go through, so a detached trigger
+  // does not keep carrying a dead anchor name forever (the current Popover
+  // contract: detaching the trigger removes its anchor association).
   const contextRef = useCallback(
     (el: HTMLElement | null) => {
       if (!el) {
-        triggerRef.current = null;
+        const stale = triggerRef.current;
+        if (!stale) {
+          return;
+        }
+        const pending = {element: stale, cancelled: false};
+        pendingTriggerDetachRef.current = pending;
+        queueMicrotask(() => {
+          if (pending.cancelled || triggerRef.current !== stale) {
+            return;
+          }
+          removeAnchorName(stale, anchorId);
+          triggerRef.current = null;
+        });
         return;
+      }
+      // Reattaching the exact element a pending detach targeted: cancel it,
+      // the churn never happened as far as the anchor name is concerned.
+      if (pendingTriggerDetachRef.current?.element === el) {
+        pendingTriggerDetachRef.current.cancelled = true;
+        pendingTriggerDetachRef.current = null;
       }
       // Remove only THIS layer's anchor name from the previous element so
       // other layers sharing the same trigger keep their anchors.
