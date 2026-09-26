@@ -92,6 +92,33 @@ test('a controlled Tooltip opened inside a Dialog anchors to its trigger', async
   expect(edgeGap(tooltipBox, triggerBox)).toBeLessThan(MAX_ANCHOR_GAP_PX);
 });
 
+test('a controlled Tooltip with a text-only trigger opened inside a Dialog anchors to it', async ({
+  page,
+}) => {
+  // Tooltip wraps text-only children in an inline <span> rather than a
+  // block-level control — the shape whose content box can stay empty in the
+  // delayed (ResizeObserver) anchor-readiness path, which a button-shaped
+  // trigger cannot prove (#5398).
+  await openStory(page, 'core-layer-dismissal--text-only-trigger-in-modal');
+  const root = page.locator('#storybook-root');
+  await root.getByRole('button', {name: 'Open modal'}).click();
+
+  const trigger = root.getByText('Text-only trigger');
+  // By text, not role: the Dialog's own header Close button also carries a
+  // tooltip, so an unscoped/unnamed role query is ambiguous.
+  const tooltip = page.getByText('Still anchors');
+  await expect(tooltip).toBeVisible();
+
+  const triggerBox = await trigger.boundingBox();
+  const tooltipBox = await tooltip.boundingBox();
+  expect(triggerBox).not.toBeNull();
+  expect(tooltipBox).not.toBeNull();
+  if (triggerBox == null || tooltipBox == null) {
+    return;
+  }
+  expect(edgeGap(tooltipBox, triggerBox)).toBeLessThan(MAX_ANCHOR_GAP_PX);
+});
+
 test('a controlled HoverCard opened inside a Dialog anchors to its trigger', async ({
   page,
 }) => {
