@@ -8,7 +8,7 @@
 
 The guard was redundant on these three anyway: each already applies the whole `hoverOnPointer` class conditionally (`!isDisabled && styles.hoverOnPointer`, or `isInteractive && ...` for Thumbnail, where `isInteractive` already excludes `isDisabled`), so a disabled/non-interactive card never carries the class that would need guarding. Reverted the three keys to bare `:hover::after`, restoring the pre-regression 7-boost CSS output exactly.
 
-`@astryx/no-hover-on-disabled` now knows not to autofix a `:hover` + pseudo-element key, anywhere — autofixing one would reintroduce this exact break until the StyleX tokenizer is fixed upstream. It still reports the key everywhere except these three files, so a new unguarded `:hover::after`/`:hover::before` still needs manual verification (does the component already exclude the disabled case in JS, the way these three do?) before it's added to the rule's narrow exemption list.
+`@astryx/no-hover-on-disabled` now knows not to autofix a `:hover` + pseudo-element key, anywhere — autofixing one would reintroduce this exact break until the StyleX tokenizer is fixed upstream. The exemption from reporting is scoped to exactly the `hoverOnPointer` key in each of these three files, not the files as a whole — a new unguarded `:hover::after`/`:hover::before` under any other key in these same files, or anywhere else, is still reported and needs the same manual verification (does the component already exclude the disabled case in JS, the way these three do?) before it's added to the rule's narrow exemption list.
 
 Fixes #5442.
 
