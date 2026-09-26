@@ -130,7 +130,10 @@ function hasDisabledGuard(key) {
  *
  * See the GAP note in the file header: guarding this shape hits a StyleX
  * tokenizer bug that silently breaks the rule it's meant to protect, so it's
- * deliberately left unguarded and unflagged until that's fixed upstream.
+ * deliberately left unguarded (autofix withheld) until that's fixed
+ * upstream. Still REPORTED like any other unguarded hover key, except at
+ * the exact (file, style key) pairs EXEMPT_SITES lists below — see
+ * isExemptSite.
  */
 function hasPseudoElement(key) {
   return key.includes('::');
