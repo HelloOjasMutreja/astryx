@@ -50,8 +50,10 @@
  * reintroduce that exact regression, so the fixer stays off for this shape
  * until the upstream tokenizer is fixed. The key is still REPORTED, though:
  * an unguarded `:hover::after`/`:hover::before` is real, ordinary lint
- * output everywhere except the three files below, same as any other
- * unguarded hover key — only the autofix is withheld.
+ * output everywhere except the exact (file, style key) pairs EXEMPT_SITES
+ * lists below — a different key in one of those same files is still
+ * reported, same as any other unguarded hover key — only the autofix is
+ * withheld.
  *
  * EXEMPT_SITES narrows the reported-but-not-flagged case to exactly the
  * three (file, top-level style key) pairs where this PR verified, by hand,
