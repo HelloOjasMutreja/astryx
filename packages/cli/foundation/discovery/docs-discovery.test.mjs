@@ -115,29 +115,72 @@ describe('assets/docs audience', () => {
     );
   }
 
-  /**
+/**
    * Sentence-level, not file-level: a process word appearing anywhere in a
    * long topic file, however many caller-facing paragraphs away from any
    * directive language, is not the pattern this check exists to catch.
+   */
+  function findOurProcessWordHitsInText(text) {
+    const words = [];
+    for (const sentence of text.split(/(?<=[.!?])\s+|\n{2,}/)) {
+      const wordMatch = sentence.match(OUR_PROCESS_WORDS);
+      if (wordMatch && PROCESS_DIRECTIVE_CONTEXT.test(sentence)) {
+        words.push(wordMatch[0]);
+      }
+    }
+    return words;
+  }
+
+  /**
+   * Every string a block carries that a reader actually reads as prose:
+   * `prose`/`heading.text`, `code.code`, `list.items`, and `table`'s
+   * `headers` and each `rows` cell. A process sentence in a list item or a
+   * table cell is exactly as much a maintainer-audience leak as one in a
+   * paragraph — the shipped topics use all of these formats for guidance,
+   * not just prose blocks.
    *
+   * @param {{type?: string, text?: string, code?: string, items?: string[], headers?: string[], rows?: string[][]}} block
+   * @returns {string[]}
+   */
+  function textsInBlock(block) {
+    const texts = [];
+    if (typeof block.text === 'string') {
+      texts.push(block.text);
+    }
+    if (typeof block.code === 'string') {
+      texts.push(block.code);
+    }
+    if (Array.isArray(block.items)) {
+      texts.push(...block.items.filter(item => typeof item === 'string'));
+    }
+    if (Array.isArray(block.headers)) {
+      texts.push(...block.headers.filter(header => typeof header === 'string'));
+    }
+    if (Array.isArray(block.rows)) {
+      for (const row of block.rows) {
+        if (Array.isArray(row)) {
+          texts.push(...row.filter(cell => typeof cell === 'string'));
+        }
+      }
+    }
+    return texts;
+  }
+
+  /**
    * Section-level, not file-level, for WHERE a hit is reported: a topic can
    * carry several sections, and "the file" alone leaves a reader searching a
    * whole page for one flagged sentence.
    *
-   * @param {{sections?: Array<{title?: string, content?: Array<{type?: string, text?: string}>}>}} doc
+   * @param {{sections?: Array<{title?: string, content?: Array<object>}>}} doc
    * @returns {Array<{section: string, word: string}>}
    */
   function findOurProcessWordHits(doc) {
     const hits = [];
     for (const section of doc.sections ?? []) {
       for (const block of section.content ?? []) {
-        if (typeof block.text !== 'string') {
-          continue;
-        }
-        for (const sentence of block.text.split(/(?<=[.!?])\s+|\n{2,}/)) {
-          const wordMatch = sentence.match(OUR_PROCESS_WORDS);
-          if (wordMatch && PROCESS_DIRECTIVE_CONTEXT.test(sentence)) {
-            hits.push({section: section.title ?? '(untitled)', word: wordMatch[0]});
+        for (const text of textsInBlock(block)) {
+          for (const word of findOurProcessWordHitsInText(text)) {
+            hits.push({section: section.title ?? '(untitled)', word});
           }
         }
       }
@@ -187,6 +230,74 @@ describe('assets/docs audience', () => {
         ),
       ),
     ).toEqual([{section: 'Section', word: 'evidence'}]);
+  });
+
+  it('flags process language in a list item, not just a prose paragraph', () => {
+    const doc = {
+      sections: [
+        {
+          title: 'Before you submit',
+          content: [
+            {
+              type: 'list',
+              style: 'unordered',
+              items: [
+                'Reviewers must attach evidence to the readiness checklist before sign-off.',
+                'Use a descriptive branch name.',
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    expect(findOurProcessWordHits(doc)).toEqual([
+      {section: 'Before you submit', word: 'evidence'},
+    ]);
+  });
+
+  it('flags process language in a table cell', () => {
+    const doc = {
+      sections: [
+        {
+          title: 'Checklist',
+          content: [
+            {
+              type: 'table',
+              headers: ['Step', 'Detail'],
+              rows: [
+                [
+                  '3',
+                  'Reviewers must attach evidence to the readiness checklist before sign-off.',
+                ],
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    expect(findOurProcessWordHits(doc)).toEqual([
+      {section: 'Checklist', word: 'evidence'},
+    ]);
+  });
+
+  it('flags process language inside a code block comment', () => {
+    const doc = {
+      sections: [
+        {
+          title: 'Example',
+          content: [
+            {
+              type: 'code',
+              lang: 'ts',
+              code: '// Reviewers must attach evidence to the readiness checklist before sign-off.',
+            },
+          ],
+        },
+      ],
+    };
+    expect(findOurProcessWordHits(doc)).toEqual([
+      {section: 'Example', word: 'evidence'},
+    ]);
   });
 
   it('allows a caller-facing rendering term that happens to share a word', () => {
@@ -240,6 +351,11 @@ describe('assets/docs audience', () => {
   });
 
   it('EXEMPT_SECTIONS narrows the exception to the exact (file, section) pair verified caller-facing', () => {
+    // Drives the real EXEMPT_SECTIONS array and isExemptSection — the same
+    // two the corpus scan above uses — not a local stand-in, so a
+    // regression in the real matching (a typo in the field names it reads,
+    // a comparison that's accidentally case-insensitive, …) would actually
+    // fail this test.
     const violatingHits = findOurProcessWordHits(
       docWithProse(
         'Reviewers must attach evidence to the readiness checklist before sign-off.',
@@ -259,24 +375,36 @@ describe('assets/docs audience', () => {
       ),
     ).toEqual(violatingHits);
 
-    // With a matching exemption entry, the same hit is filtered out — but
-    // ONLY for that exact file+section; a different section in the same
-    // file, or the same section title in a different file, still reports.
-    const exemptions = [
-      {
-        file: 'example.doc.mjs',
-        section: 'Verified caller-facing section',
-        reason: 'test fixture demonstrating the exemption mechanism',
-      },
-    ];
-    const isExempt = (file, section) =>
-      exemptions.some(e => e.file === file && e.section === section);
-    expect(
-      violatingHits.filter(hit => !isExempt('example.doc.mjs', hit.section)),
-    ).toEqual([]);
-    expect(
-      violatingHits.filter(hit => !isExempt('other.doc.mjs', hit.section)),
-    ).toEqual(violatingHits);
+    // Push a temporary entry onto the real list — cleaned up in `finally` so
+    // it can't leak into the corpus scan or any other test in this file.
+    EXEMPT_SECTIONS.push({
+      file: 'example.doc.mjs',
+      section: 'Verified caller-facing section',
+      reason: 'test fixture demonstrating the exemption mechanism',
+    });
+    try {
+      // Exempted for that exact file+section…
+      expect(
+        violatingHits.filter(
+          hit => !isExemptSection('example.doc.mjs', hit.section),
+        ),
+      ).toEqual([]);
+      // …but NOT for a different section in the same file, and not for the
+      // same section title in a different file.
+      expect(
+        isExemptSection('example.doc.mjs', 'A different section'),
+      ).toBe(false);
+      expect(
+        isExemptSection('other.doc.mjs', 'Verified caller-facing section'),
+      ).toBe(false);
+      expect(
+        violatingHits.filter(
+          hit => !isExemptSection('other.doc.mjs', hit.section),
+        ),
+      ).toEqual(violatingHits);
+    } finally {
+      EXEMPT_SECTIONS.length = 0;
+    }
   });
 });
 
