@@ -542,6 +542,30 @@ describe('Button', () => {
     expect(handleKeyDown).toHaveBeenCalledTimes(1);
   });
 
+  it('suppresses activation keys but passes other keys on a busy-only anchor Button', async () => {
+    // The button-rendered path suppresses Enter/Space while aria-disabled;
+    // the anchor-rendered path (href set, busy-only) shares the same
+    // handleKeyDown but only wires onClick, so a consumer onKeyDown still
+    // received Enter/Space on a busy link.
+    const user = userEvent.setup();
+    const handleKeyDown = vi.fn();
+    render(
+      <Button
+        label="Docs"
+        href="https://example.com"
+        isLoading
+        onKeyDown={handleKeyDown}
+      />,
+    );
+    const link = screen.getByRole('link');
+    link.focus();
+    await user.keyboard('{Enter}');
+    expect(handleKeyDown).not.toHaveBeenCalled();
+
+    await user.keyboard('{Escape}');
+    expect(handleKeyDown).toHaveBeenCalledTimes(1);
+  });
+
   it('keeps native disabled (not aria-disabled) when isDisabled and not busy, even without a tooltip', () => {
     render(<Button label="Save" isDisabled />);
     const button = screen.getByRole('button');

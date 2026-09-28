@@ -792,7 +792,8 @@ export function Button({
         {...edgeCompAttr}
         aria-busy={isLoadingState || undefined}
         aria-disabled={useAriaDisabled || undefined}
-        onClick={handleClick}>
+        onClick={handleClick}
+        {...(handleKeyDown ? {onKeyDown: handleKeyDown} : null)}>
         {buttonContent}
       </LinkComponent>
     );
