@@ -487,13 +487,6 @@ function isPopoverOperationInFlight(doc: Document): boolean {
  * would otherwise block a layer that anchors to it from ever opening.
  */
 
-/**
- * Upper bound on how many animation frames `show()` polls an anchor for a
- * real layout box before giving up and opening anyway. See the bounded-poll
- * comment where this is used, in `show()`.
- */
-const ANCHOR_WAIT_MAX_FRAMES = 60;
-
 function waitForAncestorAnimations(
   anchor: HTMLElement,
   onReady: () => void,
@@ -993,27 +986,34 @@ function useLayerImplementation(
       pendingAnchorWaitRef.current = waitForAncestorAnimations(anchor, openNow);
       return;
     }
-    // Two readiness signals race, whichever resolves first wins:
+    // Two readiness signals race, whichever resolves first wins. Neither
+    // ever resolves against a boxless trigger — the current Layer contract
+    // is that layered UI stays positioned against its trigger, so a
+    // controlled/default-open layer whose container gains layout later than
+    // any fixed bound (a pinned Tooltip in a Dialog someone opens a few
+    // seconds after the page loads, e.g.) still has to end up anchored, not
+    // opened against a 0×0 box because a cap gave up first:
     //
     // - A real ResizeObserver, same as before. Fast for a block-level
     //   trigger (the common case) — a real browser typically delivers the
     //   first entry within a frame of the anchor becoming visible.
-    // - A bounded rAF poll of the anchor's own getBoundingClientRect(). A
+    // - An UNBOUNDED rAF poll of the anchor's own getBoundingClientRect(). A
     //   ResizeObserver reliably does not deliver ANY entry at all for a
     //   purely `display: inline`, non-replaced box — exactly the shape a
     //   text-only Tooltip/HoverCard trigger's wrapper `<span>` is — so
     //   observing one alone can leave this wait never resolving, not just
-    //   resolving late (#5398). Bounded because an environment that never
-    //   produces real layout (jsdom's getBoundingClientRect is always
-    //   all-zero, when nothing else has already stubbed a resolvable
-    //   ResizeObserver) would otherwise reschedule a frame forever, which
-    //   under fake timers (`vi.runAllTimers()`) never terminates.
+    //   resolving late (#5398). This keeps polling until show()'s own
+    //   `cancelPendingAnchorWait()` stops it (a subsequent show()/hide(), or
+    //   unmount) — there is nothing else to give up to, since opening
+    //   anchorless is exactly the bug this exists to prevent.
     //
     // Racing both, rather than polling alone, keeps a synchronous-firing
     // test ResizeObserver stub (several component tests use one, modeling a
     // real observer's typical behavior for an already-visible element)
     // resolving exactly as fast as it always did — the poll below never even
-    // starts in that case.
+    // starts in that case. Environments with no real layout ever (jsdom
+    // without a ResizeObserver polyfill) are excluded before this point, so
+    // this loop only ever runs somewhere a box can actually appear.
     const state: {resolved: boolean; rafHandle: number | null} = {
       resolved: false,
       rafHandle: null,
@@ -1037,11 +1037,9 @@ function useLayerImplementation(
     });
     observer.observe(anchor);
     if (!state.resolved) {
-      let framesWaited = 0;
       const poll = () => {
         const box = anchor.getBoundingClientRect();
-        framesWaited += 1;
-        if (box.width || box.height || framesWaited >= ANCHOR_WAIT_MAX_FRAMES) {
+        if (box.width || box.height) {
           resolve();
           return;
         }
