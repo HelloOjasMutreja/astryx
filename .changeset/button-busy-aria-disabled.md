@@ -6,4 +6,6 @@
 
 `aria-disabled`, unlike native `disabled`, still lets the button dispatch a click — the busy guard already called `preventDefault()` to block the button's own action, but a click on a busy button could still bubble to a wrapping ancestor's own click handler (a clickable row, card, or backdrop), which the previous native-`disabled` behavior never allowed. `handleClick` now also calls `stopPropagation()` in that guard, containing an unavailable click at the Button boundary the way a natively disabled control always did.
 
+The `href`-rendered anchor path had the same gap for keyboard activation: it only wired `onClick` to the busy guard, not `onKeyDown`, so a consumer's own `onKeyDown` still received Enter/Space on a busy-only anchor Button while it was announced `aria-disabled`. The anchor path now wires the same `handleKeyDown` suppression the button path already had, so Enter/Space are swallowed and every other key still reaches the consumer, on both render paths.
+
 @HelloOjasMutreja
