@@ -1071,6 +1071,75 @@ export const TextOnlyTriggerInModal: Story = {
   render: () => <TextOnlyTriggerInModalExample />,
 };
 
+/**
+ * The trigger only gains a real layout box a full 1.5s after the Dialog
+ * opens (a placeholder with no size stands in until then) — well past any
+ * fixed frame/time bound a readiness wait might give up after. The layer
+ * must still end up anchored to the trigger once it's actually ready, not
+ * opened early against a boxless placeholder (#5398): the current Layer
+ * contract is that layered UI stays positioned against its trigger, with no
+ * time limit on how long that trigger is allowed to take.
+ */
+function DelayedTriggerLayoutInModalExample() {
+  const [isOpen, setIsOpen] = useState(false);
+  const [isTipOpen, setIsTipOpen] = useState(true);
+  const [triggerReady, setTriggerReady] = useState(false);
+
+  return (
+    <>
+      <Button
+        label="Open modal"
+        variant="secondary"
+        onClick={() => {
+          setTriggerReady(false);
+          setIsTipOpen(true);
+          setIsOpen(true);
+          setTimeout(() => setTriggerReady(true), 1500);
+        }}
+      />
+      <Dialog
+        isOpen={isOpen}
+        onOpenChange={setIsOpen}
+        width={520}
+        aria-label="Modal with a delayed-layout tooltip trigger">
+        <Layout
+          header={
+            <DialogHeader
+              title="Modal with a delayed-layout tooltip trigger"
+              onOpenChange={setIsOpen}
+            />
+          }
+          content={
+            <LayoutContent>
+              {
+                // One stable element throughout (not swapped), so the
+                // ref Tooltip attaches to it never has to move mid-wait —
+                // display:none is what keeps it boxless for the first
+                // 1.5s, independent of the Dialog's own (much faster)
+                // open transition.
+              }
+              <Tooltip
+                isOpen={isTipOpen}
+                onOpenChange={setIsTipOpen}
+                content="Anchors once ready">
+                <Button
+                  label="Late trigger"
+                  variant="secondary"
+                  style={triggerReady ? undefined : {display: 'none'}}
+                />
+              </Tooltip>
+            </LayoutContent>
+          }
+        />
+      </Dialog>
+    </>
+  );
+}
+
+export const DelayedTriggerLayoutInModal: Story = {
+  render: () => <DelayedTriggerLayoutInModalExample />,
+};
+
 const pulse = stylex.keyframes({
   '0%': {transform: 'scale(1)'},
   '50%': {transform: 'scale(1.4)'},

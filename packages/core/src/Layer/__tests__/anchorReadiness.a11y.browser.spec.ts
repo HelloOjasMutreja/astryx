@@ -119,6 +119,36 @@ test('a controlled Tooltip with a text-only trigger opened inside a Dialog ancho
   expect(edgeGap(tooltipBox, triggerBox)).toBeLessThan(MAX_ANCHOR_GAP_PX);
 });
 
+test('a controlled Tooltip whose trigger gains layout well past any fixed bound still anchors to it', async ({
+  page,
+}) => {
+  // The trigger stays boxless (display: none) for a full 1.5s after the
+  // Dialog opens — well past a fixed frame/time bound a readiness wait
+  // might give up after. The layer must still end up anchored once the
+  // trigger is actually ready, not opened early against a boxless
+  // placeholder: the current Layer contract puts no time limit on how long
+  // a trigger is allowed to take (#5398).
+  await openStory(
+    page,
+    'core-layer-dismissal--delayed-trigger-layout-in-modal',
+  );
+  const root = page.locator('#storybook-root');
+  await root.getByRole('button', {name: 'Open modal'}).click();
+
+  const trigger = root.getByRole('button', {name: 'Late trigger'});
+  const tooltip = page.getByText('Anchors once ready');
+  await expect(tooltip).toBeVisible({timeout: 3_000});
+
+  const triggerBox = await trigger.boundingBox();
+  const tooltipBox = await tooltip.boundingBox();
+  expect(triggerBox).not.toBeNull();
+  expect(tooltipBox).not.toBeNull();
+  if (triggerBox == null || tooltipBox == null) {
+    return;
+  }
+  expect(edgeGap(tooltipBox, triggerBox)).toBeLessThan(MAX_ANCHOR_GAP_PX);
+});
+
 test('a controlled HoverCard opened inside a Dialog anchors to its trigger', async ({
   page,
 }) => {
