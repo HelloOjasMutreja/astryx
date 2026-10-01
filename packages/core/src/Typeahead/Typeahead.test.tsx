@@ -956,6 +956,45 @@ describe('BaseTypeahead hasEntriesOnFocus', () => {
       expect(input).toHaveAttribute('aria-expanded', 'true');
     });
   });
+
+  it('reopens on click when the input was already focused and the dropdown closed without a blur (#6845)', async () => {
+    const user = userEvent.setup();
+    render(
+      <BaseTypeahead
+        searchSource={fruitSource}
+        value={null}
+        onChange={() => {}}
+        hasEntriesOnFocus
+        debounceMs={0}
+      />,
+    );
+    const input = screen.getByRole('combobox');
+
+    // A real click focuses the input (justFocusedRef suppresses the click
+    // handler's own open logic here, since handleFocus already opened it).
+    await user.click(input);
+    await waitFor(() => {
+      expect(input).toHaveAttribute('aria-expanded', 'true');
+    });
+
+    // Escape closes the dropdown via popover.hide() alone — same as
+    // selecting a result (which also re-focuses the input internally) or a
+    // composing field re-focusing this input after committing something
+    // elsewhere, the input is never actually blurred.
+    await user.keyboard('{Escape}');
+    await waitFor(() => {
+      expect(input).toHaveAttribute('aria-expanded', 'false');
+    });
+    expect(input).toHaveFocus();
+
+    // Clicking the still-focused input must reopen it — before the fix,
+    // this click dispatched no focus event (the input never lost focus) and
+    // nothing else reopened the dropdown.
+    await user.click(input);
+    await waitFor(() => {
+      expect(input).toHaveAttribute('aria-expanded', 'true');
+    });
+  });
 });
 
 describe('BaseTypeahead minQueryLength', () => {

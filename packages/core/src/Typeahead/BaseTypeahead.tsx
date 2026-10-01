@@ -460,6 +460,7 @@ export const BaseTypeahead = function BaseTypeahead<T extends SearchableItem>({
   onPointerDown: onPointerDownProp,
   onFocus: onFocusProp,
   onBlur: onBlurProp,
+  onClick: onClickProp,
   id: nativeInputId,
   'aria-describedby': nativeAriaDescribedBy,
   'aria-labelledby': nativeAriaLabelledBy,
@@ -535,6 +536,23 @@ export const BaseTypeahead = function BaseTypeahead<T extends SearchableItem>({
   // pointerup/click causes the browser's light-dismiss to immediately
   // close it (the click is seen as "outside" the newly-opened popover).
   const pointerActiveRef = useRef(false);
+
+  // Whether a `focus` event just ran as part of the current click. Set in
+  // handleFocus, read (and cleared) in handleClick: a click that focuses a
+  // previously-unfocused input is already handled by handleFocus, which
+  // fires first in the same synchronous gesture, and must not also run the
+  // click handler's open logic a second time. A click on an input that was
+  // ALREADY focused dispatches no focus event at all (focus() -- imperative
+  // or native -- is a no-op when the target is already the active element),
+  // so handleClick is the only signal available for that case: closing the
+  // dropdown (selecting a result, committing a token elsewhere in a
+  // composing component) often re-focuses the same input programmatically,
+  // and the next click on it would otherwise do nothing visible. Reset via
+  // a microtask rather than inside handleClick itself, so a focus that is
+  // NOT immediately followed by a click (Tab, or focus() called with no
+  // subsequent click at all) doesn't leave a stale true for some later,
+  // unrelated click to misread.
+  const justFocusedRef = useRef(false);
 
   // Debounce ref
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -827,8 +845,10 @@ export const BaseTypeahead = function BaseTypeahead<T extends SearchableItem>({
     [onChange, popover, searchSource, setLoading],
   );
 
-  // Handle focus
-  const handleFocus = useCallback(() => {
+  // Shared by handleFocus and handleClick: bootstrap entries if none are
+  // loaded yet, or re-show cached results that haven't been invalidated by
+  // a selection since (comparing the two generation refs catches that).
+  const openIfEligible = useCallback(() => {
     if (isDisabled) {
       return;
     }
@@ -837,9 +857,6 @@ export const BaseTypeahead = function BaseTypeahead<T extends SearchableItem>({
     } else if (
       results.length > 0 &&
       (query.length > 0 || hasEntriesOnFocus) &&
-      // Only re-show cached results if they haven't been invalidated by
-      // a selection. Refs are always current, so this check isn't affected
-      // by React's closure staleness the way results.length is.
       resultsGenRef.current === searchGenRef.current
     ) {
       showLayer();
@@ -852,6 +869,29 @@ export const BaseTypeahead = function BaseTypeahead<T extends SearchableItem>({
     performBootstrap,
     showLayer,
   ]);
+
+  // Handle focus
+  const handleFocus = useCallback(() => {
+    justFocusedRef.current = true;
+    queueMicrotask(() => {
+      justFocusedRef.current = false;
+    });
+    openIfEligible();
+  }, [openIfEligible]);
+
+  // Handle click — a click that focuses a previously-unfocused input is
+  // already covered by handleFocus (see justFocusedRef above). A click on
+  // an input that was ALREADY focused (the common case right after
+  // selecting a result or committing a token elsewhere re-focuses this
+  // input programmatically, closing the dropdown) dispatches no focus event
+  // at all, so without this the dropdown never reopens until the user
+  // clicks away and back (#6845).
+  const handleClick = useCallback(() => {
+    if (justFocusedRef.current || popover.isOpen) {
+      return;
+    }
+    openIfEligible();
+  }, [popover.isOpen, openIfEligible]);
 
   // Handle blur — close the dropdown when focus leaves the input for an
   // element that is neither inside the field wrapper (anchor) nor inside the
@@ -1048,6 +1088,7 @@ export const BaseTypeahead = function BaseTypeahead<T extends SearchableItem>({
           );
         }, onPointerDownProp)}
         onFocus={composeEventHandlers(handleFocus, onFocusProp)}
+        onClick={composeEventHandlers(handleClick, onClickProp)}
         onBlur={composeEventHandlers(handleBlur, onBlurProp)}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
