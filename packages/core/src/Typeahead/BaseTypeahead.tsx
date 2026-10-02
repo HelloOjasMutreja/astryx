@@ -537,22 +537,22 @@ export const BaseTypeahead = function BaseTypeahead<T extends SearchableItem>({
   // close it (the click is seen as "outside" the newly-opened popover).
   const pointerActiveRef = useRef(false);
 
-  // Whether a `focus` event just ran as part of the current click. Set in
-  // handleFocus, read (and cleared) in handleClick: a click that focuses a
-  // previously-unfocused input is already handled by handleFocus, which
-  // fires first in the same synchronous gesture, and must not also run the
-  // click handler's open logic a second time. A click on an input that was
-  // ALREADY focused dispatches no focus event at all (focus() -- imperative
-  // or native -- is a no-op when the target is already the active element),
-  // so handleClick is the only signal available for that case: closing the
+  // Whether the input was ALREADY the active element the moment the current
+  // click gesture began, captured at pointerdown -- before the browser's own
+  // focus-on-pointerdown behavior can move focus onto it. pointerdown always
+  // fires before focus in a mouse/touch-driven click (pointerdown -> focus ->
+  // pointerup -> click), so this reflects the pre-click focus state exactly,
+  // with no dependency on event-loop timing between focus and click (a
+  // microtask-based flag cleared between the two was tried and measured
+  // clearing before the click arrived for an async bootstrap source,
+  // double-firing it). A click that itself just caused the input to gain
+  // focus reads false here and is left to handleFocus, which already opens
+  // it; a click on an input that was already focused -- closing the
   // dropdown (selecting a result, committing a token elsewhere in a
   // composing component) often re-focuses the same input programmatically,
-  // and the next click on it would otherwise do nothing visible. Reset via
-  // a microtask rather than inside handleClick itself, so a focus that is
-  // NOT immediately followed by a click (Tab, or focus() called with no
-  // subsequent click at all) doesn't leave a stale true for some later,
-  // unrelated click to misread.
-  const justFocusedRef = useRef(false);
+  // which dispatches no focus event at all -- reads true and reopens it in
+  // handleClick.
+  const wasAlreadyFocusedRef = useRef(false);
 
   // Debounce ref
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -872,22 +872,18 @@ export const BaseTypeahead = function BaseTypeahead<T extends SearchableItem>({
 
   // Handle focus
   const handleFocus = useCallback(() => {
-    justFocusedRef.current = true;
-    queueMicrotask(() => {
-      justFocusedRef.current = false;
-    });
     openIfEligible();
   }, [openIfEligible]);
 
   // Handle click — a click that focuses a previously-unfocused input is
-  // already covered by handleFocus (see justFocusedRef above). A click on
-  // an input that was ALREADY focused (the common case right after
-  // selecting a result or committing a token elsewhere re-focuses this
-  // input programmatically, closing the dropdown) dispatches no focus event
-  // at all, so without this the dropdown never reopens until the user
-  // clicks away and back (#6845).
+  // already covered by handleFocus. A click on an input that was ALREADY
+  // focused (the common case right after selecting a result or committing a
+  // token elsewhere re-focuses this input programmatically, closing the
+  // dropdown) dispatches no focus event at all, so without this the
+  // dropdown never reopens until the user clicks away and back (#6845). See
+  // wasAlreadyFocusedRef above for how the two cases are told apart.
   const handleClick = useCallback(() => {
-    if (justFocusedRef.current || popover.isOpen) {
+    if (!wasAlreadyFocusedRef.current || popover.isOpen) {
       return;
     }
     openIfEligible();
@@ -1078,6 +1074,11 @@ export const BaseTypeahead = function BaseTypeahead<T extends SearchableItem>({
         value={query}
         onChange={handleInputChange}
         onPointerDown={composeEventHandlers(() => {
+          // Captured before the browser's own default action moves focus
+          // onto the input as part of this same pointerdown — see
+          // wasAlreadyFocusedRef above.
+          wasAlreadyFocusedRef.current =
+            document.activeElement === inputRef.current;
           pointerActiveRef.current = true;
           document.addEventListener(
             'click',
