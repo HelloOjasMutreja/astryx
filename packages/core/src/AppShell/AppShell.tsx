@@ -537,20 +537,21 @@ export function AppShell({
   const [uncontrolledMobileOpen, setUncontrolledMobileOpen] = useState(false);
   const isMobileNavOpen = mobileNavConfig?.isOpen ?? uncontrolledMobileOpen;
 
-  // Drives the mobile nav's `Activity` boundary below, deliberately not the
-  // same value as `isMobileNavOpen`: opening flips this immediately, but
-  // closing holds it `true` for a beat first, so MobileNav's own close
-  // effect gets a real chance to run its slide-out transition and schedule
-  // its delayed `dialog.close()` before Activity hides the subtree (#5701).
-  const [isMobileNavActivityVisible, setIsMobileNavActivityVisible] =
+  // Holds the mobile nav's `Activity` boundary visible for a beat after a
+  // close, so MobileNav's own close effect gets a real chance to run its
+  // slide-out transition and schedule its delayed `dialog.close()` before
+  // Activity hides the subtree (#5701). Only the CLOSE is deferred: opening
+  // reads `isMobileNavOpen` directly below, so a controlled open is visible in
+  // the commit that carries it instead of one effect later.
+  const [isMobileNavCloseHeld, setIsMobileNavCloseHeld] =
     useState(isMobileNavOpen);
   useEffect(() => {
     if (!HasActivity) {
       return;
     }
     if (isMobileNavOpen) {
-      // eslint-disable-next-line @eslint-react/set-state-in-effect -- reopening must cancel a pending hide and become visible immediately, not on a later render
-      setIsMobileNavActivityVisible(true);
+      // eslint-disable-next-line @eslint-react/set-state-in-effect -- arms the close hold for when this open ends; visibility while open does not wait on it
+      setIsMobileNavCloseHeld(true);
       return;
     }
     const delayMs = window.matchMedia('(prefers-reduced-motion: reduce)')
@@ -558,10 +559,11 @@ export function AppShell({
       ? 0
       : MOBILE_NAV_MAX_CLOSE_DELAY_MS + ACTIVITY_HIDE_BUFFER_MS;
     const timeout = setTimeout(() => {
-      setIsMobileNavActivityVisible(false);
+      setIsMobileNavCloseHeld(false);
     }, delayMs);
     return () => clearTimeout(timeout);
   }, [isMobileNavOpen]);
+  const isMobileNavActivityVisible = isMobileNavOpen || isMobileNavCloseHeld;
 
   const mobileNavOnOpenChange = mobileNavConfig?.onOpenChange;
   const setMobileNavOpen = useCallback(

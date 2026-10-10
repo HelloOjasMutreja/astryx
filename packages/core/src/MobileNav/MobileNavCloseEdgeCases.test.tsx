@@ -26,7 +26,7 @@ import {
   beforeEach,
   afterEach,
 } from 'vitest';
-import {StrictMode} from 'react';
+import {StrictMode, useLayoutEffect} from 'react';
 import {render, screen, fireEvent, act} from '@testing-library/react';
 import {MobileNav} from './MobileNav';
 import {AppShell} from '../AppShell/AppShell';
@@ -494,5 +494,44 @@ describe('MobileNav close path edge cases', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+  // A controlled open must be visible in the commit that carries it. The
+  // Activity boundary only defers the CLOSE; if opening waited for an effect
+  // to copy the open state, the drawer would render hidden for one commit
+  // with `isOpen` already true.
+  it('shows a controlled open in the same commit, not one effect later', () => {
+    const commits: {isOpen: boolean; isHidden: boolean}[] = [];
+    function Probe({isOpen}: {isOpen: boolean}) {
+      useLayoutEffect(() => {
+        const drawer = document.querySelector('dialog');
+        commits.push({
+          isOpen,
+          isHidden:
+            drawer != null && getComputedStyle(drawer).display === 'none',
+        });
+      });
+      return null;
+    }
+    const shell = (isOpen: boolean) => (
+      <AppShell
+        sideNav={
+          <SideNav>
+            <SideNavSection title="Test" isHeaderHidden>
+              <SideNavItem label="Home" />
+            </SideNavSection>
+          </SideNav>
+        }
+        mobileNav={{breakpoint: 'md', isOpen, onOpenChange: () => {}}}>
+        <Probe isOpen={isOpen} />
+        <div>Content</div>
+      </AppShell>
+    );
+
+    const {rerender} = render(shell(false));
+    rerender(shell(true));
+
+    const openCommits = commits.filter(commit => commit.isOpen);
+    expect(openCommits.length).toBeGreaterThan(0);
+    expect(openCommits.every(commit => !commit.isHidden)).toBe(true);
   });
 });
