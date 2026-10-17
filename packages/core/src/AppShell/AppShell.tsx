@@ -548,13 +548,13 @@ export function AppShell({
   // the commit that carries it instead of one effect later.
   const [isMobileNavCloseHeld, setIsMobileNavCloseHeld] =
     useState(isMobileNavOpen);
+  // Arm the hold during render, from the open state itself, so no Effect has
+  // to copy props into state; the Effect below only owns the release timer.
+  if (isMobileNavOpen && !isMobileNavCloseHeld) {
+    setIsMobileNavCloseHeld(true);
+  }
   useEffect(() => {
-    if (!HasActivity) {
-      return;
-    }
-    if (isMobileNavOpen) {
-      // eslint-disable-next-line @eslint-react/set-state-in-effect -- arms the close hold for when this open ends; visibility while open does not wait on it
-      setIsMobileNavCloseHeld(true);
+    if (!HasActivity || isMobileNavOpen) {
       return;
     }
     const delayMs = window.matchMedia('(prefers-reduced-motion: reduce)')

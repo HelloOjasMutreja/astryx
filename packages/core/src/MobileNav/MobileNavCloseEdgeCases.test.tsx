@@ -521,12 +521,23 @@ describe('MobileNav close path edge cases', () => {
       // one in control.
       expect(dialog).toHaveAttribute('open');
 
-      // MobileNav's own close delay (capped at 250ms) fires well before
-      // AppShell's Activity buffer (300ms), so it closes on its own timing.
+      // MobileNav's own close delay (capped at 250ms) runs first: about
+      // 260ms after the click the dialog has closed on its own timing while
+      // AppShell's Activity boundary (held for 250ms + 50ms) still shows the
+      // subtree. Hiding first would cut off that close (#5701).
       act(() => {
-        vi.advanceTimersByTime(300);
+        vi.advanceTimersByTime(260);
       });
       expect(dialog).not.toHaveAttribute('open');
+      // Activity hides its subtree with an inline `display: none`; a closed
+      // dialog's own UA style does not count here.
+      expect(dialog.style.display).not.toBe('none');
+
+      // After the hold, Activity hides the subtree.
+      act(() => {
+        vi.advanceTimersByTime(60);
+      });
+      expect(dialog.style.display).toBe('none');
     } finally {
       vi.useRealTimers();
     }
