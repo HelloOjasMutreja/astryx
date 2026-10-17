@@ -514,6 +514,11 @@ function waitForAncestorAnimations(
       ) {
         return false;
       }
+      // A paused or idle animation never reaches its end on its own, so
+      // waiting on it would hold the layer closed for good.
+      if (animation.playState !== 'running') {
+        return false;
+      }
       const timing = animation.effect?.getComputedTiming();
       return timing?.iterations !== Infinity;
     });
@@ -955,10 +960,14 @@ function useLayerImplementation(
   // unmount, so a stale wait from a closed-then-reopened layer never fires
   // openNow() after the fact.
   const pendingAnchorWaitRef = useRef<(() => void) | null>(null);
+  // The element that wait is polling, so a trigger swapped out underneath it
+  // can restart the wait on the new element (see `contextRef`).
+  const pendingAnchorElementRef = useRef<HTMLElement | null>(null);
 
   const cancelPendingAnchorWait = useCallback(() => {
     pendingAnchorWaitRef.current?.();
     pendingAnchorWaitRef.current = null;
+    pendingAnchorElementRef.current = null;
   }, []);
 
   // A trigger with no box — 0x0, as every element not yet laid out reports —
@@ -985,17 +994,24 @@ function useLayerImplementation(
     }
     const rect = anchor.getBoundingClientRect();
     if (rect.width !== 0 || rect.height !== 0) {
-      pendingAnchorWaitRef.current = waitForAncestorAnimations(anchor, openNow);
+      // A trigger that already has a box is a valid anchor: open now, in the
+      // same task as the interaction that asked, so a menu still opens on
+      // press and not on the next frame. Only a boxless trigger has to wait.
+      openNow();
       return;
     }
-    // No API to wait on (jsdom, an old browser): same fallback
-    // sharedResizeObserver.ts uses for the same gap — skip the wait rather
-    // than throw, and open against whatever box is available now.
+    // No layout engine to wait on (jsdom, an old browser): same fallback
+    // sharedResizeObserver.ts uses for the same gap. Skip the wait rather than
+    // throw, and open against whatever box is available now. A missing
+    // `document.getAnimations` is the signal for "no real layout" here: jsdom
+    // reports every box as 0x0 forever, so a ResizeObserver stub that never
+    // fires would otherwise hold every layer closed.
     if (
       typeof ResizeObserver === 'undefined' ||
-      typeof requestAnimationFrame === 'undefined'
+      typeof requestAnimationFrame === 'undefined' ||
+      typeof document.getAnimations !== 'function'
     ) {
-      pendingAnchorWaitRef.current = waitForAncestorAnimations(anchor, openNow);
+      openNow();
       return;
     }
     // Two readiness signals race, whichever resolves first wins. Neither
@@ -1030,6 +1046,10 @@ function useLayerImplementation(
       resolved: false,
       rafHandle: null,
     };
+    // Once the box exists, a short settle wait lets an ancestor's running entry
+    // animation finish before the layer anchors to it. Held here so the one
+    // cancel function below covers this stage as well as the box wait.
+    let cancelSettleWait: () => void = () => {};
     const resolve = () => {
       if (state.resolved) {
         return;
@@ -1039,7 +1059,7 @@ function useLayerImplementation(
       if (state.rafHandle != null) {
         cancelAnimationFrame(state.rafHandle);
       }
-      pendingAnchorWaitRef.current = waitForAncestorAnimations(anchor, openNow);
+      cancelSettleWait = waitForAncestorAnimations(anchor, openNow);
     };
     const observer = new ResizeObserver(entries => {
       const entry = entries[0];
@@ -1065,7 +1085,9 @@ function useLayerImplementation(
       if (state.rafHandle != null) {
         cancelAnimationFrame(state.rafHandle);
       }
+      cancelSettleWait();
     };
+    pendingAnchorElementRef.current = anchor;
   }, [mode, openNow, cancelPendingAnchorWait]);
 
   const hide = useCallback(() => {
@@ -1147,6 +1169,10 @@ function useLayerImplementation(
           }
           removeAnchorName(stale, anchorId);
           triggerRef.current = null;
+          // A real unmount: stop polling an element that will never get a box.
+          if (pendingAnchorElementRef.current === stale) {
+            cancelPendingAnchorWait();
+          }
         });
         return;
       }
@@ -1163,8 +1189,20 @@ function useLayerImplementation(
       }
       addAnchorName(el, anchorId);
       triggerRef.current = el;
+      // A show() is still waiting for a box on a different trigger: that wait
+      // polls the element it started with, so it would never end for this
+      // one. Restart it on the new trigger, after the commit that attached it.
+      const waitingOn = pendingAnchorElementRef.current;
+      if (waitingOn && waitingOn !== el) {
+        cancelPendingAnchorWait();
+        queueMicrotask(() => {
+          if (triggerRef.current === el && !isOpenRef.current) {
+            showRef.current();
+          }
+        });
+      }
     },
-    [anchorId],
+    [anchorId, cancelPendingAnchorWait],
   );
 
   // Arm only when the dismissing gesture's click is still ahead of us. Some

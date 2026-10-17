@@ -539,10 +539,11 @@ export function useTooltip(options: TooltipOptions = {}): TooltipReturn {
     if (isOpen === undefined) {
       return;
     }
-    clearTimeouts();
     if (isOpen) {
+      clearTimeouts();
       showLayer();
     } else {
+      clearTimeouts();
       hideLayer();
     }
   }, [isOpen, clearTimeouts, showLayer, hideLayer]);

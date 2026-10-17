@@ -9,7 +9,7 @@
  * SYNC: When useLayer.tsx changes, update tests accordingly
  */
 
-import {describe, it, expect, vi, afterEach} from 'vitest';
+import {describe, it, expect, vi, afterEach, beforeEach} from 'vitest';
 import {
   render,
   renderHook,
@@ -1664,5 +1664,251 @@ describe('contextRef anchor-name churn (#5398)', () => {
     });
 
     expect(anchorNamesOf(x)).not.toContain(anchorId);
+  });
+});
+
+describe('show() anchor readiness (#5398)', () => {
+  // jsdom reports every box as 0x0 and has no layout engine, so each piece of
+  // one is stubbed: per-element boxes, a manual frame queue, a ResizeObserver
+  // the test can watch, and the Web Animations API whose presence marks a real
+  // layout environment.
+  const boxes = new WeakMap<Element, {width: number; height: number}>();
+  let frames: (FrameRequestCallback | null)[] = [];
+  let observers: {disconnected: boolean}[] = [];
+  let animations: unknown[] = [];
+
+  const originalRect = Element.prototype.getBoundingClientRect;
+
+  class FakeKeyframeEffect {
+    constructor(public target: Element) {}
+    getComputedTiming() {
+      return {iterations: 1};
+    }
+  }
+
+  beforeEach(() => {
+    frames = [];
+    observers = [];
+    animations = [];
+    vi.stubGlobal('KeyframeEffect', FakeKeyframeEffect);
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback): number =>
+      frames.push(cb),
+    );
+    vi.stubGlobal('cancelAnimationFrame', (handle: number) => {
+      frames[handle - 1] = null;
+    });
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        state = {disconnected: false};
+        constructor() {
+          observers.push(this.state);
+        }
+        observe() {}
+        unobserve() {}
+        disconnect() {
+          this.state.disconnected = true;
+        }
+      },
+    );
+    Object.defineProperty(document, 'getAnimations', {
+      configurable: true,
+      value: () => animations,
+    });
+    Element.prototype.getBoundingClientRect = function () {
+      const box = boxes.get(this) ?? {width: 0, height: 0};
+      return {
+        ...box,
+        x: 0,
+        y: 0,
+        top: 0,
+        left: 0,
+        right: box.width,
+        bottom: box.height,
+        toJSON: () => ({}),
+      };
+    };
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    Element.prototype.getBoundingClientRect = originalRect;
+    delete (document as unknown as {getAnimations?: unknown}).getAnimations;
+  });
+
+  /** Run every queued frame callback once, as one animation frame would. */
+  function flushFrame() {
+    const pending = frames;
+    frames = [];
+    act(() => {
+      for (const cb of pending) {
+        cb?.(performance.now());
+      }
+    });
+  }
+
+  function Harness({target}: {target: 'a' | 'b' | 'none'}) {
+    const layer = useLayerInternal({mode: 'context'});
+    return (
+      <>
+        <button
+          type="button"
+          data-testid="a"
+          ref={target === 'a' ? layer.ref : undefined}
+          onClick={layer.show}>
+          A
+        </button>
+        <button
+          type="button"
+          data-testid="b"
+          ref={target === 'b' ? layer.ref : undefined}
+          onClick={layer.show}>
+          B
+        </button>
+        <button type="button" data-testid="hide" onClick={layer.hide}>
+          Hide
+        </button>
+        <span data-testid="state">{layer.isOpen ? 'open' : 'closed'}</span>
+        {layer.render(<span>Layer content</span>)}
+      </>
+    );
+  }
+
+  it('opens in the same task when the trigger already has a box', () => {
+    const {getByTestId} = render(<Harness target="a" />);
+    boxes.set(getByTestId('a'), {width: 80, height: 24});
+
+    fireEvent.click(getByTestId('a'));
+
+    expect(getByTestId('state')).toHaveTextContent('open');
+    expect(observers).toHaveLength(0);
+    expect(frames).toHaveLength(0);
+  });
+
+  it('waits for a box on a boxless trigger, then settles, then opens', () => {
+    const {getByTestId} = render(<Harness target="a" />);
+
+    fireEvent.click(getByTestId('a'));
+    expect(getByTestId('state')).toHaveTextContent('closed');
+
+    // The trigger gains a box; the next poll sees it and starts the settle
+    // frame, and only after that does the layer open.
+    boxes.set(getByTestId('a'), {width: 80, height: 24});
+    flushFrame();
+    expect(getByTestId('state')).toHaveTextContent('closed');
+    flushFrame();
+    expect(getByTestId('state')).toHaveTextContent('open');
+  });
+
+  it('does not hold the layer closed for a paused animation on an ancestor', () => {
+    const {getByTestId} = render(<Harness target="a" />);
+    const trigger = getByTestId('a');
+    animations.push({
+      effect: new FakeKeyframeEffect(trigger.parentElement as Element),
+      playState: 'paused',
+      finished: new Promise(() => {}),
+    });
+
+    fireEvent.click(trigger);
+    boxes.set(trigger, {width: 80, height: 24});
+    flushFrame();
+    flushFrame();
+
+    expect(getByTestId('state')).toHaveTextContent('open');
+  });
+
+  it('still waits for a running animation on an ancestor to finish', async () => {
+    const {getByTestId} = render(<Harness target="a" />);
+    const trigger = getByTestId('a');
+    let finish = () => {};
+    animations.push({
+      effect: new FakeKeyframeEffect(trigger.parentElement as Element),
+      playState: 'running',
+      finished: new Promise<void>(resolve => {
+        finish = resolve;
+      }),
+    });
+
+    fireEvent.click(trigger);
+    boxes.set(trigger, {width: 80, height: 24});
+    flushFrame();
+    flushFrame();
+    expect(getByTestId('state')).toHaveTextContent('closed');
+
+    await act(async () => {
+      finish();
+      await Promise.resolve();
+    });
+    expect(getByTestId('state')).toHaveTextContent('open');
+  });
+
+  it('opens without waiting when there is no layout engine, whatever the ResizeObserver does', () => {
+    delete (document as unknown as {getAnimations?: unknown}).getAnimations;
+    const {getByTestId} = render(<Harness target="a" />);
+
+    fireEvent.click(getByTestId('a'));
+
+    expect(getByTestId('state')).toHaveTextContent('open');
+    expect(observers).toHaveLength(0);
+  });
+
+  it('restarts the wait on the new trigger when a boxless one is replaced', async () => {
+    const {getByTestId, rerender} = render(<Harness target="a" />);
+    boxes.set(getByTestId('b'), {width: 80, height: 24});
+
+    fireEvent.click(getByTestId('a'));
+    expect(getByTestId('state')).toHaveTextContent('closed');
+
+    // The ref moves to `b`, which has a box. The wait that was polling `a`
+    // would never end, so the layer has to be re-shown against `b`.
+    await act(async () => {
+      rerender(<Harness target="b" />);
+      await Promise.resolve();
+    });
+
+    expect(getByTestId('state')).toHaveTextContent('open');
+  });
+
+  it('stops polling a trigger that unmounts without a replacement', async () => {
+    const {getByTestId, rerender} = render(<Harness target="a" />);
+
+    fireEvent.click(getByTestId('a'));
+    expect(observers).toHaveLength(1);
+
+    await act(async () => {
+      rerender(<Harness target="none" />);
+      await Promise.resolve();
+    });
+
+    expect(observers[0].disconnected).toBe(true);
+    expect(frames.every(cb => cb === null)).toBe(true);
+    expect(getByTestId('state')).toHaveTextContent('closed');
+  });
+
+  it('hide() cancels a settle wait that is already pending', async () => {
+    const {getByTestId} = render(<Harness target="a" />);
+    const trigger = getByTestId('a');
+    let finish = () => {};
+    animations.push({
+      effect: new FakeKeyframeEffect(trigger.parentElement as Element),
+      playState: 'running',
+      finished: new Promise<void>(resolve => {
+        finish = resolve;
+      }),
+    });
+
+    fireEvent.click(trigger);
+    boxes.set(trigger, {width: 80, height: 24});
+    flushFrame();
+    flushFrame();
+    expect(getByTestId('state')).toHaveTextContent('closed');
+
+    fireEvent.click(getByTestId('hide'));
+    await act(async () => {
+      finish();
+      await Promise.resolve();
+    });
+
+    expect(getByTestId('state')).toHaveTextContent('closed');
   });
 });
