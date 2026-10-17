@@ -136,6 +136,42 @@ describe('MobileNav close path edge cases', () => {
     }
   });
 
+  // A browser that does not hold a discrete `display` transition (WebKit)
+  // drops the dialog to `display: none` the moment the open styling goes, while
+  // it is still an open modal: nothing is visible, yet the page stays inert
+  // until the close timer fires. So the dialog's own open styling has to be
+  // held by the component, not left to that transition. jsdom applies no
+  // StyleX styles, so this reads the readable class names StyleX emits in
+  // tests: the `open` class (display) is held through the closing commit, the
+  // `backdropOpen` class is not, and the hold ends when the dialog closes.
+  it('keeps the dialog rendered until its delayed close has run', () => {
+    vi.useFakeTimers();
+    try {
+      const {rerender} = render(<Drawer isOpen />);
+      const dialog = screen.getByTestId('mobile-nav');
+      expect(dialog.className).toMatch(/styles\.open/);
+      expect(dialog.className).toMatch(/styles\.backdropOpen/);
+
+      act(() => {
+        rerender(<Drawer isOpen={false} />);
+      });
+      // Still an open modal, so still rendered; only the backdrop's open
+      // styling (the fade-out) has gone.
+      expect(dialog).toHaveAttribute('open');
+      expect(dialog.className).toMatch(/styles\.open/);
+      expect(dialog.className).not.toMatch(/styles\.backdropOpen/);
+
+      act(() => {
+        vi.advanceTimersByTime(300);
+      });
+      // Closed: the hold is released along with the dialog.
+      expect(dialog).not.toHaveAttribute('open');
+      expect(dialog.className).not.toMatch(/styles\.open/);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('closes the dialog when unmounted while fully open', () => {
     const {unmount} = render(<Drawer isOpen />);
     const dialog = screen.getByTestId('mobile-nav');

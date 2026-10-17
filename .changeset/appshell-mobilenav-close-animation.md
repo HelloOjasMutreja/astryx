@@ -8,4 +8,6 @@
 
 `AppShell` now holds the `Activity` boundary visible for a beat after the drawer closes, strictly longer than `MobileNav`'s own worst-case close delay, so `MobileNav`'s normal close effect gets a real chance to run its transition and its own timed `dialog.close()` before `Activity` ever hides the subtree.
 
+`MobileNav` also keeps its dialog rendered from the commit that closes it until its delayed `close()` has run, instead of relying on the dialog's discrete `display` transition to do so. A browser that does not hold that transition (WebKit) dropped the dialog to `display: none` at once while it was still an open modal, so for about 200ms nothing was visible and the page stayed inert. The slide-out itself is unchanged.
+
 @HelloOjasMutreja
