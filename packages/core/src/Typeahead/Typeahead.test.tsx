@@ -1667,6 +1667,47 @@ describe('Typeahead edit mode', () => {
     expect(input).toHaveFocus();
   });
 
+  // Escape and blur restore the token but leave the edit-mode label in the
+  // base's query, so a clear from the restored token faces the same stale text.
+  it.each([
+    [
+      'Escape',
+      (input: HTMLElement) => fireEvent.keyDown(input, {key: 'Escape'}),
+    ],
+    ['blur', (input: HTMLElement) => fireEvent.blur(input)],
+  ])(
+    'empties the input when cleared after %s restored the token (#7038)',
+    async (_name, leaveEditMode) => {
+      const onChangeQuery = vi.fn();
+      function Controlled() {
+        const [value, setValue] = useState<SearchableItem | null>(fruits[0]);
+        return (
+          <Typeahead
+            label="Fruit"
+            searchSource={fruitSource}
+            value={value}
+            onChange={setValue}
+            onChangeQuery={onChangeQuery}
+            hasClear
+          />
+        );
+      }
+      render(<Controlled />);
+      const input = screen.getByRole<HTMLInputElement>('combobox');
+
+      fireEvent.click(screen.getByText(fruits[0].label).closest('div')!);
+      await waitFor(() => expect(input.value).toBe(fruits[0].label));
+
+      leaveEditMode(input);
+      await screen.findByRole('button', {name: 'Clear selection'});
+
+      fireEvent.click(screen.getByRole('button', {name: 'Clear selection'}));
+
+      await waitFor(() => expect(input.value).toBe(''));
+      expect(onChangeQuery).toHaveBeenLastCalledWith('');
+    },
+  );
+
   it('does not report a query change when cleared outside edit mode', () => {
     const onChangeQuery = vi.fn();
     render(
