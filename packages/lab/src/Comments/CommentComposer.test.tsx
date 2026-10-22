@@ -12,6 +12,11 @@ import {
   it,
   vi,
 } from 'vitest';
+const announce = vi.hoisted(() => vi.fn());
+vi.mock('@astryxdesign/core/hooks', async importOriginal => ({
+  ...(await importOriginal<typeof import('@astryxdesign/core/hooks')>()),
+  useAnnounce: () => announce,
+}));
 // The full emoji set renders slowly in jsdom; the composer only needs a few.
 vi.mock('../EmojiPicker/emojiData', () => ({
   EMOJI_GROUPS: [
@@ -70,6 +75,7 @@ class ResizeObserverStub {
 }
 
 beforeEach(() => {
+  announce.mockClear();
   vi.stubGlobal('ResizeObserver', ResizeObserverStub);
   Element.prototype.scrollIntoView = () => {};
 });
@@ -77,6 +83,17 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllGlobals();
 });
+
+/** The composer's failure Banner, which carries no live role. */
+function composerErrorBanner(): HTMLElement {
+  const banner = document.querySelector<HTMLElement>(
+    '[data-composer-error="banner"]',
+  );
+  if (banner == null) {
+    throw new Error('Composer error Banner not found');
+  }
+  return banner;
+}
 
 async function settle() {
   await act(() => new Promise<void>(resolve => setTimeout(resolve, 0)));
@@ -207,8 +224,14 @@ describe('CommentComposer', () => {
       });
     });
     expect(onUploadImages).not.toHaveBeenCalled();
-    expect(screen.getByRole('alert').textContent).toContain(
-      'Only image files can be added',
+    const banner = composerErrorBanner();
+    expect(banner.textContent).toContain('Only image files can be added');
+    // The Banner has no live role: it is announced once through the channel.
+    expect(banner).not.toHaveAttribute('role');
+    expect(announce).toHaveBeenCalledTimes(1);
+    expect(announce).toHaveBeenCalledWith(
+      expect.stringContaining('Only image files can be added'),
+      'assertive',
     );
   });
 
@@ -227,8 +250,9 @@ describe('CommentComposer', () => {
         highlightColor="green"
       />,
     );
-    const alert = screen.getByRole('alert');
-    fireEvent.click(within(alert).getByRole('button', {name: 'Retry'}));
+    fireEvent.click(
+      within(composerErrorBanner()).getByRole('button', {name: 'Retry'}),
+    );
     expect(onRetry).toHaveBeenCalledTimes(1);
     expect(
       document
