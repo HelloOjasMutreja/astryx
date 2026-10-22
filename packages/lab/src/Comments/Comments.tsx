@@ -257,7 +257,10 @@ export function Comments({
   useStatusAnnouncement(
     loadErrorRef,
     loadError != null
-      ? `${t('@astryx.comments.loadFailed')}. ${loadError}`
+      ? t('@astryx.comments.errorAnnouncement', {
+          title: t('@astryx.comments.loadFailed'),
+          description: loadError,
+        })
       : null,
     'assertive',
   );

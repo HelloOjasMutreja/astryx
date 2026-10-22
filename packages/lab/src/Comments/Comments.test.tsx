@@ -1373,7 +1373,7 @@ describe('Comments status announcements (spec:AST-086)', () => {
     ).toHaveLength(0);
     expect(screen.getByText('Server unreachable')).toBeTruthy();
     expect(announce.mock.calls).toEqual([
-      [expect.stringContaining('Server unreachable'), 'assertive'],
+      ["Comments couldn't load Server unreachable", 'assertive'],
     ]);
 
     rerender(
@@ -1434,6 +1434,52 @@ describe('Comments status announcements (spec:AST-086)', () => {
     ]);
   });
 
+  it('does not repeat a failure when a retry starts, and announces each failed retry', async () => {
+    const onRetryComment = vi.fn().mockRejectedValue(new Error('offline'));
+    render(
+      <Sized>
+        <Comments
+          layout="embedded"
+          comments={[
+            {
+              id: 'failed',
+              author: VIEWER,
+              body: 'Kept text',
+              createdAt: '2026-09-30T19:00:00Z',
+              status: 'error',
+              errorMessage: "Couldn't post this comment.",
+            },
+          ]}
+          currentUser={VIEWER}
+          onRetryComment={onRetryComment}
+        />
+      </Sized>,
+    );
+    await flush();
+    const retryFailed = "Couldn't post this comment. Retrying didn't work.";
+    expect(announce.mock.calls).toEqual([
+      ["Couldn't post this comment.", 'assertive'],
+    ]);
+
+    const banner = () => bannerByData('data-comment-delivery-error');
+    const retry = () => within(banner()).getByRole('button', {name: 'Retry'});
+    await click(retry());
+    await flush();
+    expect(announce.mock.calls).toEqual([
+      ["Couldn't post this comment.", 'assertive'],
+      [retryFailed, 'assertive'],
+    ]);
+
+    // Starting a retry says nothing; its failure, a new occasion, speaks.
+    await click(retry());
+    await flush();
+    expect(announce.mock.calls).toEqual([
+      ["Couldn't post this comment.", 'assertive'],
+      [retryFailed, 'assertive'],
+      [retryFailed, 'assertive'],
+    ]);
+  });
+
   it('announces a comment still being written, politely, outside a chat log', async () => {
     render(
       <Sized>
@@ -1457,7 +1503,10 @@ describe('Comments status announcements (spec:AST-086)', () => {
   });
 
   it('delivers a history failure through an alert slot that exists before the Banner', async () => {
-    const loadVersions = vi.fn().mockRejectedValue(new Error('nope'));
+    let rejectVersions!: (error: Error) => void;
+    const loadVersions = vi.fn(
+      () => new Promise<never>((_, reject) => (rejectVersions = reject)),
+    );
     render(
       <Sized>
         <Comments comments={COMMENTS} loadVersions={loadVersions} />
@@ -1465,12 +1514,20 @@ describe('Comments status announcements (spec:AST-086)', () => {
     );
     await click(screen.getByRole('button', {name: 'View edit history'}));
     await flush();
+    // While the history loads, the slot is already mounted, and empty.
     const slot = document.querySelector<HTMLElement>('dialog [role="alert"]');
     if (slot == null) {
-      throw new Error('History alert slot not found');
+      throw new Error('History alert slot not found while loading');
     }
+    expect(slot.textContent).toBe('');
+
+    await act(async () => {
+      rejectVersions(new Error('nope'));
+    });
+    await flush();
+    // The failure lands in that slot; the Banner has no live role of its own.
+    expect(document.querySelector('dialog [role="alert"]')).toBe(slot);
     expect(slot.textContent).toContain("Edit history couldn't load");
-    // The Banner added to the slot has no live role of its own.
     expect(slot.querySelector('[role]')).toBeNull();
   });
 });
