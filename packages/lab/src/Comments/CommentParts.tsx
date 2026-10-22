@@ -269,6 +269,8 @@ export type ErrorBannerContent = {
   isActionDisabled?: boolean;
   /** Its own retry is running: say nothing until the outcome (FR6). */
   isRetrying?: boolean;
+  /** The failure was already announced elsewhere; this Banner stays silent. */
+  isAnnounced?: boolean;
 };
 
 /**
@@ -295,7 +297,7 @@ export function ErrorBanner({
   const bannerRef = useRef<HTMLDivElement>(null);
   useStatusAnnouncement(
     bannerRef,
-    content.isRetrying === true
+    content.isRetrying === true || content.isAnnounced === true
       ? null
       : description != null
         ? t('@astryx.comments.errorAnnouncement', {title, description})

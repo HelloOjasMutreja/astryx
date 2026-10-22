@@ -1276,6 +1276,45 @@ describe('Comments keyboard and focus', () => {
     ).toHaveFocus();
   });
 
+  it('announces a failed delete once when no chat log wraps the row', async () => {
+    const onDelete = vi.fn().mockRejectedValue(new Error('offline'));
+    render(
+      <Sized>
+        <Comments
+          layout="embedded"
+          comments={COMMENTS}
+          currentUser={OTHER}
+          onDelete={onDelete}
+          selectedThreadId="root-1"
+          onSelectedThreadChange={vi.fn()}
+        />
+      </Sized>,
+    );
+    await click(
+      within(articleByAuthor('Maya Chen')).getByRole('button', {
+        name: "Actions for Maya Chen's comment",
+      }),
+    );
+    await flush();
+    await click(menuItem('Delete'));
+    const dialog = document.querySelector('dialog[open]');
+    if (!(dialog instanceof HTMLDialogElement)) {
+      throw new Error('Delete confirmation not found');
+    }
+    announce.mockClear();
+    await click(within(dialog).getByRole('button', {name: 'Delete'}));
+    await flush();
+    await nextFrame();
+
+    // The dialog owns the announcement; the row's stored failure is silent.
+    const deleteAnnouncements = announce.mock.calls.filter(([message]) =>
+      /couldn't be deleted/.test(message),
+    );
+    expect(deleteAnnouncements).toEqual([
+      ["This comment couldn't be deleted. Try again.", 'assertive'],
+    ]);
+  });
+
   it('moves focus to the thread after deleting a reply, and announces a failure once', async () => {
     const onDelete = vi
       .fn()

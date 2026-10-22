@@ -78,7 +78,12 @@ function editComposerContext(comment: AnyComment): CommentComposerContext {
 }
 
 /** A failed comment action and how to run it again. */
-export type ActionFailure = {message: string; retry?: () => void};
+export type ActionFailure = {
+  message: string;
+  retry?: () => void;
+  /** Already spoken by whoever raised it, so the row's Banner stays silent. */
+  isAnnounced?: boolean;
+};
 
 type FocusTarget = 'reply' | 'actions' | 'history' | 'article' | 'thread';
 
@@ -493,6 +498,16 @@ export function useCommentsController({
       const message = t('@astryx.comments.deleteFailedRetry');
       setDeleteError(message);
       announce(message, 'assertive');
+      // The dialog owns this failure's announcement (AST-086 FR1, FR6); the
+      // stored failure the row shows must not say it a second time.
+      setActionErrors(previous =>
+        previous[target.id] == null
+          ? previous
+          : {
+              ...previous,
+              [target.id]: {...previous[target.id], isAnnounced: true},
+            },
+      );
     }
   };
 
