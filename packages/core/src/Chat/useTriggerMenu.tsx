@@ -587,8 +587,12 @@ export function useTriggerMenu(
         if (trigger.searchSource) {
           // Use SearchSource — cancel previous, then search
           trigger.searchSource.cancel?.();
-          setState(prev => ({...prev, isLoading: true}));
           const result = trigger.searchSource.search(query);
+          // A synchronous source already has its results, so it never shows
+          // or announces the loading row (spec:AST-086 FR7).
+          if (!Array.isArray(result)) {
+            setState(prev => ({...prev, isLoading: true}));
+          }
           Promise.resolve(result).then(
             items => {
               if (!isCurrent()) {

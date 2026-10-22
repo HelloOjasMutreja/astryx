@@ -1907,6 +1907,29 @@ describe('ChatComposerInput trigger loading announcement (spec:AST-086)', () => 
     ]);
   });
 
+  it('announces nothing for a synchronous source, whose results are already listed (FR7)', async () => {
+    render(
+      <ChatComposerInput triggers={[createMentionTrigger()]} debounceMs={0} />,
+    );
+    const editable = screen.getByRole('combobox');
+    editable.focus();
+
+    typeAtEnd(editable, '@c');
+    await act(async () => {});
+    typeAtEnd(editable, '@ci');
+    await act(async () => {});
+
+    // jsdom gives the popover no semantics, so query the menu by its id.
+    const menu = document.getElementById(
+      editable.getAttribute('aria-controls')!,
+    );
+    expect(menu?.querySelector('[role="option"]')).toHaveTextContent(
+      'Cindy Zhang',
+    );
+    expect(screen.queryByText('Searching…')).toBeNull();
+    expect(announce).not.toHaveBeenCalled();
+  });
+
   it("announces a trigger's own loadingText", () => {
     const {source} = createPendingSource();
     render(
