@@ -1842,6 +1842,19 @@ describe('ChatComposerInput trigger loading announcement (spec:AST-086)', () => 
     fireEvent.input(editable);
   }
 
+  /**
+   * Lets a settled search apply, as the browser would before the next frame,
+   * then lets the loading announcement's two frames run.
+   */
+  async function nextFrame() {
+    await act(async () => {});
+    await act(async () => {
+      for (let frame = 0; frame < 2; frame++) {
+        await new Promise(resolve => requestAnimationFrame(resolve));
+      }
+    });
+  }
+
   /** An async source whose searches resolve only when the test says so. */
   function createPendingSource() {
     const resolvers: ((items: SearchableItem[]) => void)[] = [];
@@ -1890,7 +1903,9 @@ describe('ChatComposerInput trigger loading announcement (spec:AST-086)', () => 
     editable.focus();
 
     typeAtEnd(editable, '@c');
+    await nextFrame();
     typeAtEnd(editable, '@ci');
+    await nextFrame();
     expect(announce.mock.calls).toEqual([['Searching…', 'polite']]);
 
     await act(async () => {
@@ -1901,6 +1916,7 @@ describe('ChatComposerInput trigger loading announcement (spec:AST-086)', () => 
     expect(screen.queryByText('Searching…')).toBeNull();
 
     typeAtEnd(editable, '@cin');
+    await nextFrame();
     expect(announce.mock.calls).toEqual([
       ['Searching…', 'polite'],
       ['Searching…', 'polite'],
@@ -1930,7 +1946,30 @@ describe('ChatComposerInput trigger loading announcement (spec:AST-086)', () => 
     expect(announce).not.toHaveBeenCalled();
   });
 
-  it("announces a trigger's own loadingText", () => {
+  it('announces nothing for a search that settles before the row shows (FR7)', async () => {
+    const settled: SearchSource = {
+      bootstrap: async () => [],
+      search: async () => [{id: 'cindy', label: 'Cindy Zhang'}],
+    };
+    render(
+      <ChatComposerInput
+        triggers={[createMentionTrigger({searchSource: settled})]}
+        debounceMs={0}
+      />,
+    );
+    const editable = screen.getByRole('combobox');
+    editable.focus();
+
+    typeAtEnd(editable, '@c');
+    await nextFrame();
+    typeAtEnd(editable, '@ci');
+    await nextFrame();
+
+    expect(screen.queryByText('Searching…')).toBeNull();
+    expect(announce).not.toHaveBeenCalled();
+  });
+
+  it("announces a trigger's own loadingText", async () => {
     const {source} = createPendingSource();
     render(
       <ChatComposerInput
@@ -1946,6 +1985,7 @@ describe('ChatComposerInput trigger loading announcement (spec:AST-086)', () => 
     const editable = screen.getByRole('combobox');
     editable.focus();
     typeAtEnd(editable, '@c');
+    await nextFrame();
 
     expect(announce.mock.calls).toEqual([['Looking up people…', 'polite']]);
   });

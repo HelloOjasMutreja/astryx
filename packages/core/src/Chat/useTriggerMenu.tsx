@@ -357,8 +357,10 @@ export function useTriggerMenu(
   // The loading row carries no live role: it mounts already holding its text
   // and is removed when results arrive, so it would be skipped. The shared
   // channel announces each loading episode once instead (spec:AST-086 FR2,
-  // FR6). The flag survives a StrictMode effect replay and clears when the
-  // loading row goes away, so the next search is a new occasion.
+  // FR6), once the row has been painted: the second animation frame runs
+  // after the first paint, and a search that settles before then never shows
+  // the row, so it announces nothing (FR7). The flag clears when the loading
+  // row goes away, so the next search is a new occasion.
   const announce = useAnnounce();
   const hasAnnouncedLoadingRef = useRef(false);
   // Mirrors renderMenu: no row exists without an active trigger or while hidden.
@@ -375,8 +377,13 @@ export function useTriggerMenu(
     if (hasAnnouncedLoadingRef.current) {
       return;
     }
-    hasAnnouncedLoadingRef.current = true;
-    announce(loadingText, 'polite');
+    let frame = requestAnimationFrame(() => {
+      frame = requestAnimationFrame(() => {
+        hasAnnouncedLoadingRef.current = true;
+        announce(loadingText, 'polite');
+      });
+    });
+    return () => cancelAnimationFrame(frame);
   }, [announce, isLoadingRowShown, loadingText]);
 
   const triggerStartRef = useRef<number>(-1);
