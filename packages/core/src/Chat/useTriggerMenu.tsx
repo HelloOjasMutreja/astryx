@@ -361,8 +361,12 @@ export function useTriggerMenu(
   // loading row goes away, so the next search is a new occasion.
   const announce = useAnnounce();
   const hasAnnouncedLoadingRef = useRef(false);
-  const isLoadingRowShown = state.isLoading && !state.isHidden;
-  const loadingAnnouncement = state.activeTrigger?.loadingText ?? 'Searching…';
+  // Mirrors renderMenu: no row exists without an active trigger or while hidden.
+  const isLoadingRowShown =
+    state.isLoading && !state.isHidden && state.activeTrigger !== null;
+  // One catalog string serves the row and the announcement (FR7).
+  const loadingText =
+    state.activeTrigger?.loadingText ?? t('@astryx.chatTriggerMenu.searching');
   useEffect(() => {
     if (!isLoadingRowShown) {
       hasAnnouncedLoadingRef.current = false;
@@ -372,8 +376,8 @@ export function useTriggerMenu(
       return;
     }
     hasAnnouncedLoadingRef.current = true;
-    announce(loadingAnnouncement, 'polite');
-  }, [announce, isLoadingRowShown, loadingAnnouncement]);
+    announce(loadingText, 'polite');
+  }, [announce, isLoadingRowShown, loadingText]);
 
   const triggerStartRef = useRef<number>(-1);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -403,6 +407,12 @@ export function useTriggerMenu(
     onHide: useCallback(() => {
       if (isMenuSuppressedRef.current) {
         return;
+      }
+      // A search still waiting out its debounce must not start for a menu
+      // that is gone.
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+        searchTimeoutRef.current = null;
       }
       searchRequestIdRef.current++;
       removeAnchorSpan();
@@ -895,7 +905,6 @@ export function useTriggerMenu(
     }
 
     const emptyText = activeTrigger.emptySearchText ?? 'No results';
-    const loadingText = activeTrigger.loadingText ?? 'Searching\u2026';
 
     let listContent: ReactNode;
     if (state.isLoading) {
@@ -971,7 +980,16 @@ export function useTriggerMenu(
         xstyle: styles.popoverSurface,
       },
     );
-  }, [popover, listboxId, state, selectItem, getItemId, highlightOnHover, t]);
+  }, [
+    popover,
+    listboxId,
+    state,
+    selectItem,
+    getItemId,
+    highlightOnHover,
+    t,
+    loadingText,
+  ]);
 
   return {
     state,
