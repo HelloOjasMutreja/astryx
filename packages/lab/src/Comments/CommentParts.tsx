@@ -267,6 +267,8 @@ export type ErrorBannerContent = {
   actionLabel?: string;
   onAction?: () => void;
   isActionDisabled?: boolean;
+  /** Its own retry is running: say nothing until the outcome (FR6). */
+  isRetrying?: boolean;
 };
 
 /**
@@ -291,11 +293,9 @@ export function ErrorBanner({
   const {actionLabel, description, isActionDisabled, onAction, title} = content;
   const t = useTranslator();
   const bannerRef = useRef<HTMLDivElement>(null);
-  // While its action runs the failure is being retried, so nothing is said;
-  // the outcome is the next occasion (spec:AST-086 FR6).
   useStatusAnnouncement(
     bannerRef,
-    isActionDisabled === true
+    content.isRetrying === true
       ? null
       : description != null
         ? t('@astryx.comments.errorAnnouncement', {title, description})
