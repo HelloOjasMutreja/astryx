@@ -407,8 +407,8 @@ export function MetadataActionLink({
       color="secondary"
       xstyle={partStyles.noWrap}
       data-metadata-action={actionRole}
-      aria-disabled={isDisabled || undefined}
-      tabIndex={isDisabled ? -1 : undefined}
+      // Link keeps a disabled link in the tab order (spec:AST-085 FR1).
+      isDisabled={isDisabled}
       onClick={event => {
         event.preventDefault();
         if (isDisabled !== true) {
