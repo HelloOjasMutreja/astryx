@@ -32,6 +32,7 @@ import {
 } from 'react';
 import * as stylex from '@stylexjs/stylex';
 import {usePopover} from '../Popover/usePopover';
+import {useAnnounce} from '../hooks/useAnnounce';
 import {useHighlightedOptionScroll} from '../hooks/useHighlightedOptionScroll';
 import {
   colorVars,
@@ -352,6 +353,27 @@ export function useTriggerMenu(
     isLoading: false,
     isHidden: false,
   });
+
+  // The loading row carries no live role: it mounts already holding its text
+  // and is removed when results arrive, so it would be skipped. The shared
+  // channel announces each loading episode once instead (spec:AST-086 FR2,
+  // FR6). The flag survives a StrictMode effect replay and clears when the
+  // loading row goes away, so the next search is a new occasion.
+  const announce = useAnnounce();
+  const hasAnnouncedLoadingRef = useRef(false);
+  const isLoadingRowShown = state.isLoading && !state.isHidden;
+  const loadingAnnouncement = state.activeTrigger?.loadingText ?? 'Searching…';
+  useEffect(() => {
+    if (!isLoadingRowShown) {
+      hasAnnouncedLoadingRef.current = false;
+      return;
+    }
+    if (hasAnnouncedLoadingRef.current) {
+      return;
+    }
+    hasAnnouncedLoadingRef.current = true;
+    announce(loadingAnnouncement, 'polite');
+  }, [announce, isLoadingRowShown, loadingAnnouncement]);
 
   const triggerStartRef = useRef<number>(-1);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -878,9 +900,7 @@ export function useTriggerMenu(
     let listContent: ReactNode;
     if (state.isLoading) {
       listContent = (
-        <div role="status" {...stylex.props(styles.loadingState)}>
-          {loadingText}
-        </div>
+        <div {...stylex.props(styles.loadingState)}>{loadingText}</div>
       );
     } else if (state.items.length === 0 && state.isActive) {
       listContent = <div {...stylex.props(styles.emptyState)}>{emptyText}</div>;
