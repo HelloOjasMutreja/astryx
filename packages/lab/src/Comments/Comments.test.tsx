@@ -1358,6 +1358,15 @@ describe('Comments keyboard and focus', () => {
 });
 
 describe('Comments status announcements (spec:AST-086)', () => {
+  const FAILED_COMMENT = {
+    id: 'failed',
+    author: VIEWER,
+    body: 'Kept text',
+    createdAt: '2026-09-30T19:00:00Z',
+    status: 'error' as const,
+    errorMessage: "Couldn't post this comment.",
+  };
+
   it('announces a load failure once, assertively, and the Banner has no live role', async () => {
     const {rerender} = render(
       <Sized>
@@ -1388,19 +1397,7 @@ describe('Comments status announcements (spec:AST-086)', () => {
   it('leaves an in-timeline failure to the chat log', async () => {
     render(
       <Sized>
-        <Comments
-          comments={[
-            {
-              id: 'failed',
-              author: VIEWER,
-              body: 'Kept text',
-              createdAt: '2026-09-30T19:00:00Z',
-              status: 'error',
-              errorMessage: "Couldn't post this comment.",
-            },
-          ]}
-          currentUser={VIEWER}
-        />
+        <Comments comments={[FAILED_COMMENT]} currentUser={VIEWER} />
       </Sized>,
     );
     const banner = bannerByData('data-comment-delivery-error');
@@ -1413,16 +1410,7 @@ describe('Comments status announcements (spec:AST-086)', () => {
       <Sized>
         <Comments
           layout="embedded"
-          comments={[
-            {
-              id: 'failed',
-              author: VIEWER,
-              body: 'Kept text',
-              createdAt: '2026-09-30T19:00:00Z',
-              status: 'error',
-              errorMessage: "Couldn't post this comment.",
-            },
-          ]}
+          comments={[FAILED_COMMENT]}
           currentUser={VIEWER}
         />
       </Sized>,
@@ -1440,43 +1428,53 @@ describe('Comments status announcements (spec:AST-086)', () => {
       <Sized>
         <Comments
           layout="embedded"
-          comments={[
-            {
-              id: 'failed',
-              author: VIEWER,
-              body: 'Kept text',
-              createdAt: '2026-09-30T19:00:00Z',
-              status: 'error',
-              errorMessage: "Couldn't post this comment.",
-            },
-          ]}
+          comments={[FAILED_COMMENT]}
           currentUser={VIEWER}
           onRetryComment={onRetryComment}
         />
       </Sized>,
     );
     await flush();
-    const retryFailed = "Couldn't post this comment. Retrying didn't work.";
-    expect(announce.mock.calls).toEqual([
-      ["Couldn't post this comment.", 'assertive'],
-    ]);
+    const first = ["Couldn't post this comment.", 'assertive'];
+    const failed = [
+      "Couldn't post this comment. Retrying didn't work.",
+      'assertive',
+    ];
+    expect(announce.mock.calls).toEqual([first]);
 
     const banner = () => bannerByData('data-comment-delivery-error');
     const retry = () => within(banner()).getByRole('button', {name: 'Retry'});
     await click(retry());
     await flush();
-    expect(announce.mock.calls).toEqual([
-      ["Couldn't post this comment.", 'assertive'],
-      [retryFailed, 'assertive'],
-    ]);
+    expect(announce.mock.calls).toEqual([first, failed]);
 
     // Starting a retry says nothing; its failure, a new occasion, speaks.
     await click(retry());
     await flush();
+    expect(announce.mock.calls).toEqual([first, failed, failed]);
+  });
+
+  it('does not repeat a failure when an unrelated post settles', async () => {
+    let finishPost!: () => void;
+    const onSubmit = vi.fn(() => new Promise<void>(r => (finishPost = r)));
+    render(
+      <Sized>
+        <Comments
+          layout="embedded"
+          comments={[FAILED_COMMENT]}
+          currentUser={VIEWER}
+          onSubmit={onSubmit}
+          renderComposer={renderComposer}
+        />
+      </Sized>,
+    );
+    const composer = screen.getByRole('region', {name: 'New comment'});
+    await click(within(composer).getByText('Set draft'));
+    await click(within(composer).getByText('Submit composer'));
+    await act(async () => finishPost());
+    await flush();
     expect(announce.mock.calls).toEqual([
       ["Couldn't post this comment.", 'assertive'],
-      [retryFailed, 'assertive'],
-      [retryFailed, 'assertive'],
     ]);
   });
 

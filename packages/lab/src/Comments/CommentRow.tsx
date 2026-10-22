@@ -625,7 +625,9 @@ export function CommentRow({
                         {hasHistory ? (
                           <MetadataActionLink
                             label={t('@astryx.comments.edited')}
-                            accessibleLabel={t('@astryx.comments.viewHistory')}
+                            accessibleLabel={t(
+                              '@astryx.comments.viewHistory',
+                            )}
                             actionRole="history"
                             textType="body"
                             onClick={() => scope.openHistory(comment)}
@@ -704,7 +706,9 @@ export function CommentRow({
                     triggers={composerTriggers ?? []}
                     agentCommands={agentCommands}
                     hasEmojiPicker={hasEmojiPicker}
-                    onActionPendingChange={scope.composerActionPendingChange}
+                    onActionPendingChange={
+                      scope.composerActionPendingChange
+                    }
                     onUploadImages={uploaderFor({
                       kind: 'edit',
                       commentId: comment.id,
