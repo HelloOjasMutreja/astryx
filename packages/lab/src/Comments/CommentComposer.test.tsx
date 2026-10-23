@@ -317,6 +317,32 @@ describe('CommentComposer', () => {
     );
   });
 
+  it('announces a second refusal with the same words again', async () => {
+    render(
+      <CommentComposer
+        value=""
+        onChange={() => {}}
+        onSubmit={() => {}}
+        onUploadImages={vi.fn()}
+      />,
+    );
+    const input = document.querySelector('input[type="file"]');
+    if (!(input instanceof HTMLInputElement)) {
+      throw new Error('File input not found');
+    }
+    for (const name of ['first.pdf', 'second.pdf']) {
+      await act(async () => {
+        fireEvent.change(input, {
+          target: {
+            files: [new File(['%PDF'], name, {type: 'application/pdf'})],
+          },
+        });
+      });
+    }
+    // Each refusal is its own occasion (AST-086 FR6), though the words match.
+    expect(announce).toHaveBeenCalledTimes(2);
+  });
+
   it('shows an error with Retry, and a quoted passage the viewer can remove', () => {
     const onRetry = vi.fn();
     const onAnchorDismiss = vi.fn();

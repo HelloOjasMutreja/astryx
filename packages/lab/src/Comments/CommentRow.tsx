@@ -503,6 +503,7 @@ export function CommentRow({
           onAction: can.retry ? () => scope.retry(comment) : undefined,
           isActionDisabled: rowActionsBusy,
           isRetrying: isBusy,
+          isAnnounced: actionFailure?.isAnnounced,
         }}
         // The Banner unmounts once the retry starts; keep focus on the comment.
         onBeforeAction={() => articleRef.current?.focus()}

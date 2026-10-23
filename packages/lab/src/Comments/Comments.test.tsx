@@ -1356,6 +1356,53 @@ describe('Comments keyboard and focus', () => {
     ]);
   });
 
+  it('announces a failed delete of a failed post once', async () => {
+    const onDelete = vi.fn().mockRejectedValue(new Error('offline'));
+    render(
+      <Sized>
+        <Comments
+          layout="embedded"
+          comments={[
+            {
+              id: 'failed',
+              author: VIEWER,
+              body: 'Kept text',
+              createdAt: '2026-09-30T19:00:00Z',
+              status: 'error',
+              errorMessage: "Couldn't post this comment.",
+            },
+          ]}
+          currentUser={VIEWER}
+          onDelete={onDelete}
+        />
+      </Sized>,
+    );
+    await click(
+      within(articleByAuthor('Avery Kim')).getByRole('button', {
+        name: "Actions for Avery Kim's comment",
+      }),
+    );
+    await flush();
+    await click(menuItem('Delete'));
+    const dialog = document.querySelector('dialog[open]');
+    if (!(dialog instanceof HTMLDialogElement)) {
+      throw new Error('Delete confirmation not found');
+    }
+    announce.mockClear();
+    await click(within(dialog).getByRole('button', {name: 'Delete'}));
+    await flush();
+    await nextFrame();
+
+    // The dialog owns the announcement; the failed post's Banner shows the
+    // failure as its description without saying it a second time.
+    const deleteAnnouncements = announce.mock.calls.filter(([message]) =>
+      /couldn't be deleted/.test(message),
+    );
+    expect(deleteAnnouncements).toEqual([
+      ["This comment couldn't be deleted. Try again.", 'assertive'],
+    ]);
+  });
+
   it('moves focus to the thread after deleting a reply, and announces a failure once', async () => {
     const onDelete = vi
       .fn()
