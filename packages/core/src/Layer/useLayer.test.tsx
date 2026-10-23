@@ -9,6 +9,7 @@
  * SYNC: When useLayer.tsx changes, update tests accordingly
  */
 
+import {useLayoutEffect} from 'react';
 import {describe, it, expect, vi, afterEach, beforeEach} from 'vitest';
 import {
   render,
@@ -1883,6 +1884,121 @@ describe('show() anchor readiness (#5398)', () => {
     expect(observers[0].disconnected).toBe(true);
     expect(frames.every(cb => cb === null)).toBe(true);
     expect(getByTestId('state')).toHaveTextContent('closed');
+  });
+
+  function SwapHarness({
+    target,
+    hideOnSwap = false,
+  }: {
+    target: 'a' | 'b';
+    hideOnSwap?: boolean;
+  }) {
+    const layer = useLayerInternal({mode: 'context'});
+    const {hide} = layer;
+    useLayoutEffect(() => {
+      if (hideOnSwap) {
+        hide();
+      }
+    }, [hideOnSwap, hide]);
+    return (
+      <>
+        <button
+          type="button"
+          data-testid="a"
+          ref={target === 'a' ? layer.ref : undefined}
+          onClick={layer.show}>
+          A
+        </button>
+        <button
+          type="button"
+          data-testid="b"
+          ref={target === 'b' ? layer.ref : undefined}
+          onClick={layer.show}>
+          B
+        </button>
+        <span data-testid="state">{layer.isOpen ? 'open' : 'closed'}</span>
+        {layer.render(<span>Layer content</span>)}
+      </>
+    );
+  }
+
+  it('does not restart a wait that a hide() in the same commit cancelled', async () => {
+    const {getByTestId, rerender} = render(<SwapHarness target="a" />);
+    boxes.set(getByTestId('b'), {width: 80, height: 24});
+
+    fireEvent.click(getByTestId('a'));
+    expect(getByTestId('state')).toHaveTextContent('closed');
+
+    // The trigger moves to `b` and the layer is hidden in that same commit.
+    await act(async () => {
+      rerender(<SwapHarness target="b" hideOnSwap />);
+      await Promise.resolve();
+    });
+
+    expect(getByTestId('state')).toHaveTextContent('closed');
+  });
+
+  it('forgets a finished wait, so a later trigger swap does not reopen the layer', async () => {
+    const {container, getByTestId, rerender} = render(
+      <SwapHarness target="a" />,
+    );
+    boxes.set(getByTestId('b'), {width: 80, height: 24});
+
+    fireEvent.click(getByTestId('a'));
+    boxes.set(getByTestId('a'), {width: 80, height: 24});
+    flushFrame();
+    flushFrame();
+    expect(getByTestId('state')).toHaveTextContent('open');
+
+    const popover = container.querySelector('[popover]') as HTMLElement;
+    act(() => {
+      popover.dispatchEvent(
+        Object.assign(new Event('toggle'), {
+          oldState: 'open',
+          newState: 'closed',
+        }),
+      );
+    });
+
+    await act(async () => {
+      rerender(<SwapHarness target="b" />);
+      await Promise.resolve();
+    });
+
+    expect(getByTestId('state')).toHaveTextContent('closed');
+  });
+
+  it('waits for the dialog around the trigger to be open, even though the trigger has a box', () => {
+    function DialogHarness() {
+      const layer = useLayerInternal({mode: 'context'});
+      return (
+        <>
+          <dialog data-testid="dialog">
+            <button
+              type="button"
+              data-testid="a"
+              ref={layer.ref}
+              onClick={layer.show}>
+              A
+            </button>
+          </dialog>
+          <span data-testid="state">{layer.isOpen ? 'open' : 'closed'}</span>
+          {layer.render(<span>Layer content</span>)}
+        </>
+      );
+    }
+    const {getByTestId} = render(<DialogHarness />);
+    boxes.set(getByTestId('a'), {width: 80, height: 24});
+
+    fireEvent.click(getByTestId('a'));
+    flushFrame();
+    flushFrame();
+    expect(getByTestId('state')).toHaveTextContent('closed');
+
+    getByTestId('dialog').setAttribute('open', '');
+    flushFrame();
+    flushFrame();
+    expect(getByTestId('state')).toHaveTextContent('open');
   });
 
   it('hide() cancels a settle wait that is already pending', async () => {

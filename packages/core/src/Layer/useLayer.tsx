@@ -461,6 +461,22 @@ function isPopoverOperationInFlight(doc: Document): boolean {
 }
 
 /**
+ * Whether `anchor` is a valid CSS anchor right now: it has a layout box, and
+ * any `<dialog>` it sits in is open. `Dialog` displays its element during
+ * render but only calls `showModal()` in a later Effect, so in that window the
+ * trigger already has a box while the dialog is not yet in the top layer;
+ * opening a layer then paints it before the dialog is modal.
+ */
+function isAnchorReady(anchor: HTMLElement): boolean {
+  const rect = anchor.getBoundingClientRect();
+  if (rect.width === 0 && rect.height === 0) {
+    return false;
+  }
+  const dialog = anchor.closest('dialog');
+  return dialog == null || dialog.open;
+}
+
+/**
  * Calls `onReady` once every CSS animation/transition running on `anchor` or
  * one of its ancestors, AT THE NEXT FRAME, has finished. Calls it
  * synchronously if `document.getAnimations` does not exist (jsdom). Returns a
@@ -964,8 +980,24 @@ function useLayerImplementation(
   // can restart the wait on the new element (see `contextRef`).
   const pendingAnchorElementRef = useRef<HTMLElement | null>(null);
 
+  // The deferred restart `contextRef` queues after a trigger swap. Any
+  // show()/hide() or a new wait supersedes it, so a layer that was hidden in
+  // the same commit never reopens by itself.
+  const pendingRestartRef = useRef<{cancelled: boolean} | null>(null);
+
   const cancelPendingAnchorWait = useCallback(() => {
     pendingAnchorWaitRef.current?.();
+    pendingAnchorWaitRef.current = null;
+    pendingAnchorElementRef.current = null;
+    if (pendingRestartRef.current) {
+      pendingRestartRef.current.cancelled = true;
+      pendingRestartRef.current = null;
+    }
+  }, []);
+
+  // A wait that reached its end: nothing is pending any more, so a later
+  // trigger swap must not restart it.
+  const finishAnchorWait = useCallback(() => {
     pendingAnchorWaitRef.current = null;
     pendingAnchorElementRef.current = null;
   }, []);
@@ -992,8 +1024,7 @@ function useLayerImplementation(
       openNow();
       return;
     }
-    const rect = anchor.getBoundingClientRect();
-    if (rect.width !== 0 || rect.height !== 0) {
+    if (isAnchorReady(anchor)) {
       // A trigger that already has a box is a valid anchor: open now, in the
       // same task as the interaction that asked, so a menu still opens on
       // press and not on the next frame. Only a boxless trigger has to wait.
@@ -1059,19 +1090,25 @@ function useLayerImplementation(
       if (state.rafHandle != null) {
         cancelAnimationFrame(state.rafHandle);
       }
-      cancelSettleWait = waitForAncestorAnimations(anchor, openNow);
+      cancelSettleWait = waitForAncestorAnimations(anchor, () => {
+        finishAnchorWait();
+        openNow();
+      });
     };
     const observer = new ResizeObserver(entries => {
       const entry = entries[0];
-      if (entry && (entry.contentRect.width || entry.contentRect.height)) {
+      if (
+        entry &&
+        (entry.contentRect.width || entry.contentRect.height) &&
+        isAnchorReady(anchor)
+      ) {
         resolve();
       }
     });
     observer.observe(anchor);
     if (!state.resolved) {
       const poll = () => {
-        const box = anchor.getBoundingClientRect();
-        if (box.width || box.height) {
+        if (isAnchorReady(anchor)) {
           resolve();
           return;
         }
@@ -1088,7 +1125,7 @@ function useLayerImplementation(
       cancelSettleWait();
     };
     pendingAnchorElementRef.current = anchor;
-  }, [mode, openNow, cancelPendingAnchorWait]);
+  }, [mode, openNow, cancelPendingAnchorWait, finishAnchorWait]);
 
   const hide = useCallback(() => {
     cancelPendingAnchorWait();
@@ -1195,7 +1232,13 @@ function useLayerImplementation(
       const waitingOn = pendingAnchorElementRef.current;
       if (waitingOn && waitingOn !== el) {
         cancelPendingAnchorWait();
+        const restart = {cancelled: false};
+        pendingRestartRef.current = restart;
         queueMicrotask(() => {
+          if (restart.cancelled) {
+            return;
+          }
+          pendingRestartRef.current = null;
           if (triggerRef.current === el && !isOpenRef.current) {
             showRef.current();
           }
