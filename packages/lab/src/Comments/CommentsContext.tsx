@@ -353,6 +353,9 @@ export function useCommentsController({
     action: () => MaybePromise,
     failureMessage: string,
     retry?: () => void,
+    /** True when another owner announces this failure, so the row's banner
+     *  stays silent from its first render. */
+    isAnnounced?: boolean,
   ): Promise<boolean> => {
     setPendingActionIds(previous => new Set(previous).add(commentId));
     clearActionError(commentId);
@@ -367,6 +370,7 @@ export function useCommentsController({
           retry:
             retry ??
             (() => void runCommentAction(commentId, action, failureMessage)),
+          isAnnounced,
         },
       }));
       return false;
@@ -485,6 +489,9 @@ export function useCommentsController({
       t('@astryx.comments.deleteFailed'),
       // Retrying a delete asks for confirmation again.
       () => setDeleteTarget(target),
+      // The dialog announces a failed delete (AST-086 FR1, FR6), so the stored
+      // failure the row shows is marked before it first renders.
+      true,
     );
     if (succeeded) {
       commitAndFocus(
@@ -498,16 +505,6 @@ export function useCommentsController({
       const message = t('@astryx.comments.deleteFailedRetry');
       setDeleteError(message);
       announce(message, 'assertive');
-      // The dialog owns this failure's announcement (AST-086 FR1, FR6); the
-      // stored failure the row shows must not say it a second time.
-      setActionErrors(previous =>
-        previous[target.id] == null
-          ? previous
-          : {
-              ...previous,
-              [target.id]: {...previous[target.id], isAnnounced: true},
-            },
-      );
     }
   };
 
