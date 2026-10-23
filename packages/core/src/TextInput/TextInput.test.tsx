@@ -138,9 +138,26 @@ describe('TextInput', () => {
     expect(screen.getByRole('textbox')).not.toHaveAttribute('aria-required');
   });
 
-  it('sets disabled attribute when isDisabled is true', () => {
+  it('exposes aria-disabled and read-only, not native disabled, when isDisabled is true', () => {
     render(<TextInput label="Name" isDisabled value="" onChange={() => {}} />);
-    expect(screen.getByRole('textbox')).toBeDisabled();
+    const input = screen.getByRole('textbox');
+    expect(input).not.toBeDisabled();
+    expect(input).toHaveAttribute('aria-disabled', 'true');
+    expect(input).toHaveAttribute('readonly');
+  });
+
+  it('keeps a disabled input in the tab order (spec:AST-085)', async () => {
+    const user = userEvent.setup();
+    render(
+      <>
+        <TextInput label="First" value="" onChange={() => {}} />
+        <TextInput label="Second" isDisabled value="" onChange={() => {}} />
+        <TextInput label="Third" value="" onChange={() => {}} />
+      </>,
+    );
+    await user.tab();
+    await user.tab();
+    expect(screen.getByRole('textbox', {name: 'Second'})).toHaveFocus();
   });
 
   it('does not fire onChange when disabled', async () => {
@@ -515,7 +532,10 @@ describe('TextInput', () => {
           />
         </form>,
       );
-      expect(screen.getByRole('textbox')).toBeDisabled();
+      expect(screen.getByRole('textbox')).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      );
       expect([
         ...new FormData(container.querySelector('form')!).keys(),
       ]).toEqual([]);
@@ -888,13 +908,13 @@ describe('TextInput', () => {
       expect(input).toHaveValue('');
     });
 
-    it('remains natively disabled when disabled without a reason', () => {
+    it('stays focusable when disabled without a reason', () => {
       render(
         <TextInput label="Owner" value="" onChange={() => {}} isDisabled />,
       );
       const input = screen.getByRole('textbox');
-      expect(input).toBeDisabled();
-      expect(input).not.toHaveAttribute('aria-disabled');
+      expect(input).not.toBeDisabled();
+      expect(input).toHaveAttribute('aria-disabled', 'true');
     });
   });
 });

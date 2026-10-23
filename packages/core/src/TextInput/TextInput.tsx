@@ -156,7 +156,9 @@ export interface TextInputProps extends Omit<
    */
   isRequired?: boolean;
   /**
-   * Whether the input is disabled.
+   * Whether the input is disabled. A disabled input is dimmed, cannot be
+   * edited, and is left out of form submission, but it stays in the tab order
+   * (`aria-disabled`, not the native attribute).
    * @default false
    */
   isDisabled?: boolean;
@@ -486,12 +488,11 @@ export function TextInput({
             : undefined
         }
         placeholder={placeholder}
-        // With a disabledMessage the input keeps focusability via aria-disabled
-        // so the reason is focus-discoverable; readOnly + the handleChange guard
-        // keep the value from changing.
-        disabled={isDisabled && !showsDisabledMessage}
-        aria-disabled={showsDisabledMessage ? 'true' : undefined}
-        readOnly={isReadOnly || showsDisabledMessage || undefined}
+        // A disabled input keeps its place in the tab order (spec:AST-085):
+        // aria-disabled instead of the native attribute, with readOnly + the
+        // handleChange guard keeping the value from changing.
+        aria-disabled={isDisabled ? 'true' : undefined}
+        readOnly={isReadOnly || isDisabled || undefined}
         autoFocus={hasAutoFocus}
         data-autofocus={hasAutoFocus || undefined}
         aria-describedby={

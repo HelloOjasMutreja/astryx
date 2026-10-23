@@ -253,7 +253,9 @@ export interface TextAreaProps extends Omit<
    */
   rows?: number;
   /**
-   * Whether the textarea is disabled.
+   * Whether the textarea is disabled. A disabled textarea is dimmed, cannot be
+   * edited, and is left out of form submission, but it stays in the tab order
+   * (`aria-disabled`, not the native attribute).
    * @default false
    */
   isDisabled?: boolean;
@@ -623,12 +625,12 @@ export function TextArea({
           onBlur={onBlur}
           placeholder={placeholder}
           rows={rows}
-          // With a disabledMessage the textarea keeps focusability via
-          // aria-disabled so the reason is focus-discoverable; readOnly + the
-          // handleChange guard keep the value from changing.
-          disabled={isDisabled && !showsDisabledMessage}
-          aria-disabled={showsDisabledMessage ? 'true' : undefined}
-          readOnly={isReadOnly || showsDisabledMessage || undefined}
+          // A disabled textarea keeps its place in the tab order
+          // (spec:AST-085): aria-disabled instead of the native attribute,
+          // with readOnly + the handleChange guard keeping the value from
+          // changing.
+          aria-disabled={isDisabled ? 'true' : undefined}
+          readOnly={isReadOnly || isDisabled || undefined}
           spellCheck={hasSpellCheck}
           autoFocus={hasAutoFocus}
           data-autofocus={hasAutoFocus || undefined}
