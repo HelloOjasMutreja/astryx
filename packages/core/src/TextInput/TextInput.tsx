@@ -50,20 +50,6 @@ import {VisuallyHidden} from '../VisuallyHidden';
 import {getInputARIA, isImeKeyEvent} from '../utils';
 
 const styles = stylex.create({
-  // The shared disabled style drops the focus ring; restore it while the
-  // field's own control, a direct child, has keyboard focus (spec:AST-085
-  // FR6), so a focused status button keeps only its own outline.
-  disabledFocusRing: {
-    borderColor: {
-      default: colorVars['--color-border-emphasized'],
-      ':has(> [aria-disabled="true"]:focus-visible)':
-        colorVars['--color-accent'],
-    },
-    boxShadow: {
-      default: 'none',
-      ':has(> [aria-disabled="true"]:focus-visible)': `inset 0px 0px 0px 2px ${colorVars['--color-accent-muted']}`,
-    },
-  },
   input: {
     display: 'block',
     flex: 1,
@@ -127,6 +113,7 @@ import {
   type FieldInputBaseProps,
   useFieldInputStyling,
 } from '../Field/fieldParts';
+import {inputDisabledFocusStyles} from '../Field/inputDisabledFocus';
 import type {SizeValue} from '../utils/types';
 import {themeProps} from '../utils/themeProps';
 import {useTranslator} from '../i18n';
@@ -475,7 +462,7 @@ export function TextInput({
           inputWrapperStyles.base,
           sizeStyles[size],
           isDisabled && inputWrapperStyles.disabled,
-          isDisabled && styles.disabledFocusRing,
+          isDisabled && inputDisabledFocusStyles.ring,
           status && inputStatusBorderStyles[status.type],
           status && !isDisabled && inputStatusHoverShadowStyles[status.type],
           status && inputStatusFocusWithinStyles[status.type],
@@ -496,26 +483,26 @@ export function TextInput({
         value={optimisticValue}
         onChange={handleChange}
         onKeyDown={
-          isDisabled
+          isDisabled || onEnter || onKeyDown
             ? e => {
-                // Read-only fields still submit their form on Enter.
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                }
-              }
-            : onEnter || onKeyDown
-              ? e => {
-                  // The composing keydown fires before compositionend, so without
-                  // this guard pressing Enter to commit a Japanese/Chinese/Korean
-                  // IME conversion would trigger onEnter (submit/save actions)
-                  // before the user intends to submit. onKeyDown still receives
-                  // the raw event. See utils/ime.ts (#6082).
-                  if (e.key === 'Enter' && !isImeKeyEvent(e.nativeEvent)) {
-                    onEnter?.();
+                if (isDisabled) {
+                  // A read-only field still submits its form on Enter.
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
                   }
-                  onKeyDown?.(e);
+                  return;
                 }
-              : undefined
+                // The composing keydown fires before compositionend, so without
+                // this guard pressing Enter to commit a Japanese/Chinese/Korean
+                // IME conversion would trigger onEnter (submit/save actions)
+                // before the user intends to submit. onKeyDown still receives
+                // the raw event. See utils/ime.ts (#6082).
+                if (e.key === 'Enter' && !isImeKeyEvent(e.nativeEvent)) {
+                  onEnter?.();
+                }
+                onKeyDown?.(e);
+              }
+            : undefined
         }
         placeholder={placeholder}
         // A disabled input keeps its place in the tab order (spec:AST-085):
