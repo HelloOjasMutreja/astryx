@@ -437,7 +437,7 @@ export const docsZh = {
       name: 'isReadOnly',
       type: 'boolean',
       description:
-        '将文本域设为只读：值以完整不透明度显示并仍随表单提交，但无法编辑。与 isDisabled 不同，只读文本域不会变暗，并保留在 Tab 顺序中。同时设置时 isDisabled 优先。',
+        '将文本域设为只读：值以完整不透明度显示并仍随表单提交，但无法编辑。与 isDisabled 不同，只读文本域不会变暗，并保留其表单值。同时设置时 isDisabled 优先。',
       default: 'false',
     },
     {

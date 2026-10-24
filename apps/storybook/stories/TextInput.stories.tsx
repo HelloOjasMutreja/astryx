@@ -57,7 +57,7 @@ const meta: Meta<typeof TextInput> = {
     isReadOnly: {
       control: 'boolean',
       description:
-        'Whether the input is read-only. The value still submits with the form but cannot be edited. Unlike isDisabled it is not dimmed and stays in the tab order.',
+        'Whether the input is read-only. The value still submits with the form but cannot be edited. Unlike isDisabled it is not dimmed and keeps its form value.',
     },
     disabledMessage: {
       control: 'text',

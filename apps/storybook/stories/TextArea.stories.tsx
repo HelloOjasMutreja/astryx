@@ -59,7 +59,7 @@ const meta: Meta<typeof TextArea> = {
     isReadOnly: {
       control: 'boolean',
       description:
-        'Whether the textarea is read-only. The value still submits with the form but cannot be edited. Unlike isDisabled it is not dimmed and stays in the tab order.',
+        'Whether the textarea is read-only. The value still submits with the form but cannot be edited. Unlike isDisabled it is not dimmed and keeps its form value.',
     },
     disabledMessage: {
       control: 'text',
