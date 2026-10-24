@@ -14,11 +14,26 @@ import {describe, it, expect, vi, beforeEach} from 'vitest';
 import {render, screen, fireEvent, waitFor} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import * as stylex from '@stylexjs/stylex';
-import {inputWrapperStyles} from '../Field/inputStyles.stylex';
+import {colorVars} from '../theme/tokens.stylex';
 import {TestIcon} from '../__tests__/TestIcon';
 import {declaredValue} from '../__tests__/stylexDeclarations';
 import {InputGroup} from '../InputGroup';
 import {TextInput} from './TextInput';
+
+// jsdom cannot match `:focus-visible`: compare the ring's StyleX class hash.
+const RING = stylex
+  .props(
+    stylex.create({
+      ring: {
+        boxShadow: {
+          default: null,
+          ':has(> [aria-disabled="true"]:focus-visible)': `inset 0px 0px 0px 2px ${colorVars['--color-accent-muted']}`,
+        },
+      },
+    }).ring,
+  )
+  .className!.split(' ')
+  .pop()!;
 
 // Mock showPopover/hidePopover since jsdom does not implement them. Used by the
 // disabledMessage tooltip.
@@ -188,11 +203,7 @@ describe('TextInput', () => {
   it('rings a disabled input under keyboard focus (spec:AST-085 FR6)', () => {
     render(<TextInput label="Name" isDisabled value="" onChange={() => {}} />);
     const wrapper = screen.getByRole('textbox').parentElement!;
-    for (const name of stylex
-      .props(inputWrapperStyles.disabledFocus)
-      .className!.split(' ')) {
-      expect(wrapper).toHaveClass(name);
-    }
+    expect(wrapper).toHaveClass(RING);
   });
 
   it('does not fire onChange when disabled', async () => {

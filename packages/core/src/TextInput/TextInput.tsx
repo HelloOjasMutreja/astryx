@@ -50,6 +50,20 @@ import {VisuallyHidden} from '../VisuallyHidden';
 import {getInputARIA, isImeKeyEvent} from '../utils';
 
 const styles = stylex.create({
+  // The shared disabled style drops the focus ring; restore it while the
+  // field's own control, a direct child, has keyboard focus (spec:AST-085
+  // FR6), so a focused status button keeps only its own outline.
+  disabledFocusRing: {
+    borderColor: {
+      default: colorVars['--color-border-emphasized'],
+      ':has(> [aria-disabled="true"]:focus-visible)':
+        colorVars['--color-accent'],
+    },
+    boxShadow: {
+      default: 'none',
+      ':has(> [aria-disabled="true"]:focus-visible)': `inset 0px 0px 0px 2px ${colorVars['--color-accent-muted']}`,
+    },
+  },
   input: {
     display: 'block',
     flex: 1,
@@ -178,8 +192,8 @@ export interface TextInputProps extends Omit<
    * keyboard and assistive technology. The field cannot be edited (it becomes
    * read-only) while disabled.
    *
-   * Use this instead of wrapping a disabled input in `Tooltip` — disabled
-   * controls don't emit the pointer events an external tooltip needs.
+   * Use this instead of wrapping a disabled input in `Tooltip`, so the reason
+   * is attached to the field itself.
    *
    * @example
    * ```
@@ -360,8 +374,7 @@ export function TextInput({
   // (spec:AST-086 FR8).
   useBusyAnnouncement(isBusy, t('@astryx.spinner.loading'), containerRef);
 
-  // Disabled-reason tooltip. Disabled controls swallow pointer events, so the
-  // tooltip listeners attach to the input container (which already exists) and
+  // Disabled-reason tooltip. The tooltip listeners attach to the input container (which already exists) and
   // the input stays perceivable via aria-disabled instead of the native
   // disabled attribute. The field is made read-only so it can't be typed into,
   // and value mutation is blocked by the isDisabled guard in handleChange.
@@ -462,7 +475,7 @@ export function TextInput({
           inputWrapperStyles.base,
           sizeStyles[size],
           isDisabled && inputWrapperStyles.disabled,
-          isDisabled && inputWrapperStyles.disabledFocus,
+          isDisabled && styles.disabledFocusRing,
           status && inputStatusBorderStyles[status.type],
           status && !isDisabled && inputStatusHoverShadowStyles[status.type],
           status && inputStatusFocusWithinStyles[status.type],

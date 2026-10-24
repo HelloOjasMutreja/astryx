@@ -71,20 +71,6 @@ export const inputWrapperStyles = stylex.create({
     // Suppress the base hover ring — a disabled control must not react to hover.
     boxShadow: 'none',
   },
-  // A disabled field whose control keeps its tab stop (`spec:AST-085` FR1)
-  // shows keyboard focus as an enabled one does (FR6). It keys on the
-  // direct-child control, so a focused status button keeps only its own outline.
-  disabledFocus: {
-    borderColor: {
-      default: colorVars['--color-border-emphasized'],
-      ':has(> [aria-disabled="true"]:focus-visible)':
-        colorVars['--color-accent'],
-    },
-    boxShadow: {
-      default: 'none',
-      ':has(> [aria-disabled="true"]:focus-visible)': `inset 0px 0px 0px 2px ${colorVars['--color-accent-muted']}`,
-    },
-  },
 });
 
 /**

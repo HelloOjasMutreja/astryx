@@ -14,10 +14,25 @@ import {describe, it, expect, vi, beforeEach, afterEach} from 'vitest';
 import {render, screen, fireEvent, waitFor} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import * as stylex from '@stylexjs/stylex';
-import {inputWrapperStyles} from '../Field/inputStyles.stylex';
+import {colorVars} from '../theme/tokens.stylex';
 import {TestIcon} from '../__tests__/TestIcon';
 import {TextArea} from './TextArea';
 import {__resetLiveRegionsForTest} from '../hooks/useAnnounce';
+
+// jsdom cannot match `:focus-visible`: compare the ring's StyleX class hash.
+const RING = stylex
+  .props(
+    stylex.create({
+      ring: {
+        boxShadow: {
+          default: null,
+          ':has(> [aria-disabled="true"]:focus-visible)': `inset 0px 0px 0px 2px ${colorVars['--color-accent-muted']}`,
+        },
+      },
+    }).ring,
+  )
+  .className!.split(' ')
+  .pop()!;
 
 // FieldStatus announces status messages through the persistent useAnnounce
 // singletons; remove them between tests so role/aria-live queries in this
@@ -211,11 +226,7 @@ describe('TextArea', () => {
     for (const handler of Object.values(handlers)) {
       expect(handler).not.toHaveBeenCalled();
     }
-    for (const name of stylex
-      .props(inputWrapperStyles.disabledFocus)
-      .className!.split(' ')) {
-      expect(textarea.parentElement).toHaveClass(name);
-    }
+    expect(textarea.parentElement).toHaveClass(RING);
   });
 
   it('is not disabled by default', () => {

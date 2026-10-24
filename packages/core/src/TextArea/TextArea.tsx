@@ -67,6 +67,20 @@ import {useBusyAnnouncement} from '../hooks/useBusyAnnouncement';
 const COUNTER_WARNING_THRESHOLD = 0.8;
 
 const styles = stylex.create({
+  // The shared disabled style drops the focus ring; restore it while the
+  // field's own control, a direct child, has keyboard focus (spec:AST-085
+  // FR6), so a focused status button keeps only its own outline.
+  disabledFocusRing: {
+    borderColor: {
+      default: colorVars['--color-border-emphasized'],
+      ':has(> [aria-disabled="true"]:focus-visible)':
+        colorVars['--color-accent'],
+    },
+    boxShadow: {
+      default: 'none',
+      ':has(> [aria-disabled="true"]:focus-visible)': `inset 0px 0px 0px 2px ${colorVars['--color-accent-muted']}`,
+    },
+  },
   // The wrapper is a bare positioning context. The <textarea> spans the full
   // container and carries its own internal padding; icons, status/spinner, and
   // the character counter are absolutely-positioned overlays anchored to the
@@ -275,8 +289,8 @@ export interface TextAreaProps extends Omit<
    * discoverable by keyboard and assistive technology. The field cannot be
    * edited (it becomes read-only) while disabled.
    *
-   * Use this instead of wrapping a disabled textarea in `Tooltip` — disabled
-   * controls don't emit the pointer events an external tooltip needs.
+   * Use this instead of wrapping a disabled textarea in `Tooltip`, so the
+   * reason is attached to the field itself.
    *
    * @example
    * ```
@@ -445,8 +459,7 @@ export function TextArea({
   // (spec:AST-086 FR8).
   useBusyAnnouncement(isBusy, t('@astryx.spinner.loading'), containerRef);
 
-  // Disabled-reason tooltip. Disabled controls swallow pointer events, so the
-  // tooltip listeners attach to the textarea container (which already exists)
+  // Disabled-reason tooltip. The tooltip listeners attach to the textarea container (which already exists)
   // and the textarea stays perceivable via aria-disabled instead of the native
   // disabled attribute. The field is made read-only so it can't be typed into,
   // and value mutation is blocked by the isDisabled guard in handleChange.
@@ -609,7 +622,7 @@ export function TextArea({
             inputWrapperStyles.base,
             styles.wrapper,
             isDisabled && inputWrapperStyles.disabled,
-            isDisabled && inputWrapperStyles.disabledFocus,
+            isDisabled && styles.disabledFocusRing,
             status && inputStatusBorderStyles[status.type],
             status && !isDisabled && inputStatusHoverShadowStyles[status.type],
             status && inputStatusFocusWithinStyles[status.type],
