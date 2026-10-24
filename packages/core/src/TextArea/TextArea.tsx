@@ -263,7 +263,7 @@ export interface TextAreaProps extends Omit<
    * Whether the textarea is read-only.
    * The value is shown at full opacity and still submits with the form, but
    * cannot be edited. Unlike `isDisabled`, a read-only textarea is not dimmed
-   * and stays in the tab order — use it for a value the user should see and
+   * and keeps its form value — use it for a value the user should see and
    * send but not change. `isDisabled` takes precedence when both are set.
    * @default false
    */
@@ -451,6 +451,15 @@ export function TextArea({
   // disabled attribute. The field is made read-only so it can't be typed into,
   // and value mutation is blocked by the isDisabled guard in handleChange.
   const showsDisabledMessage = isDisabled && !!disabledMessage;
+  // A disabled field keeps its tab stop but, like a natively disabled one,
+  // runs no caller event handler other than focus and blur (`spec:AST-085` FR2).
+  const fieldProps = isDisabled
+    ? Object.fromEntries(
+        Object.entries(rest).filter(
+          ([key]) => !/^on[A-Z]/.test(key) || /^on(Focus|Blur)/.test(key),
+        ),
+      )
+    : rest;
   const disabledMessageTooltip = useTooltip({
     placement: 'above',
     // The container div is not naturally focusable; focusin bubbles up from
@@ -600,6 +609,7 @@ export function TextArea({
             inputWrapperStyles.base,
             styles.wrapper,
             isDisabled && inputWrapperStyles.disabled,
+            isDisabled && inputWrapperStyles.disabledFocus,
             status && inputStatusBorderStyles[status.type],
             status && !isDisabled && inputStatusHoverShadowStyles[status.type],
             status && inputStatusFocusWithinStyles[status.type],
@@ -614,13 +624,13 @@ export function TextArea({
           </span>
         )}
         <textarea
-          {...rest}
+          {...fieldProps}
           ref={useMergedRefs(ref, textareaRef)}
           id={id}
           name={isDisabled ? undefined : htmlName}
           value={optimisticValue}
           onChange={handleChange}
-          onPaste={onPaste}
+          onPaste={isDisabled ? undefined : onPaste}
           onFocus={onFocus}
           onBlur={onBlur}
           placeholder={placeholder}

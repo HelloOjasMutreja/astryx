@@ -166,7 +166,7 @@ export interface TextInputProps extends Omit<
    * Whether the input is read-only.
    * The value is shown at full opacity and still submits with the form, but
    * cannot be edited. Unlike `isDisabled`, a read-only input is not dimmed and
-   * stays in the tab order — use it for a value the user should see and send
+   * keeps its form value — use it for a value the user should see and send
    * but not change. `isDisabled` takes precedence when both are set.
    * @default false
    */
@@ -333,6 +333,15 @@ export function TextInput({
   });
   const t = useTranslator();
   const isEffectivelyRequired = useResolvedRequired({isRequired, isOptional});
+  // A disabled field keeps its tab stop but, like a natively disabled one,
+  // runs no caller event handler other than focus and blur (`spec:AST-085` FR2).
+  const fieldProps = isDisabled
+    ? Object.fromEntries(
+        Object.entries(rest).filter(
+          ([key]) => !/^on[A-Z]/.test(key) || /^on(Focus|Blur)/.test(key),
+        ),
+      )
+    : rest;
   const size = useSize(sizeProp, 'md');
 
   const generatedID = useId();
@@ -453,6 +462,7 @@ export function TextInput({
           inputWrapperStyles.base,
           sizeStyles[size],
           isDisabled && inputWrapperStyles.disabled,
+          isDisabled && inputWrapperStyles.disabledFocus,
           status && inputStatusBorderStyles[status.type],
           status && !isDisabled && inputStatusHoverShadowStyles[status.type],
           status && inputStatusFocusWithinStyles[status.type],
@@ -465,7 +475,7 @@ export function TextInput({
       {startIcon && renderIconSlot(startIcon, {size: 'sm', color: 'secondary'})}
       {inputGroup && <VisuallyHidden id={inputLabelID}>{label}</VisuallyHidden>}
       <input
-        {...rest}
+        {...fieldProps}
         ref={useMergedRefs(ref, inputRef)}
         id={id}
         name={isDisabled ? undefined : htmlName}
@@ -473,19 +483,26 @@ export function TextInput({
         value={optimisticValue}
         onChange={handleChange}
         onKeyDown={
-          onEnter || onKeyDown
+          isDisabled
             ? e => {
-                // The composing keydown fires before compositionend, so without
-                // this guard pressing Enter to commit a Japanese/Chinese/Korean
-                // IME conversion would trigger onEnter (submit/save actions)
-                // before the user intends to submit. onKeyDown still receives
-                // the raw event. See utils/ime.ts (#6082).
-                if (e.key === 'Enter' && !isImeKeyEvent(e.nativeEvent)) {
-                  onEnter?.();
+                // Read-only fields still submit their form on Enter.
+                if (e.key === 'Enter') {
+                  e.preventDefault();
                 }
-                onKeyDown?.(e);
               }
-            : undefined
+            : onEnter || onKeyDown
+              ? e => {
+                  // The composing keydown fires before compositionend, so without
+                  // this guard pressing Enter to commit a Japanese/Chinese/Korean
+                  // IME conversion would trigger onEnter (submit/save actions)
+                  // before the user intends to submit. onKeyDown still receives
+                  // the raw event. See utils/ime.ts (#6082).
+                  if (e.key === 'Enter' && !isImeKeyEvent(e.nativeEvent)) {
+                    onEnter?.();
+                  }
+                  onKeyDown?.(e);
+                }
+              : undefined
         }
         placeholder={placeholder}
         // A disabled input keeps its place in the tab order (spec:AST-085):

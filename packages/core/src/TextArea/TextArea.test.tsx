@@ -13,6 +13,8 @@ import {useState} from 'react';
 import {describe, it, expect, vi, beforeEach, afterEach} from 'vitest';
 import {render, screen, fireEvent, waitFor} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import * as stylex from '@stylexjs/stylex';
+import {inputWrapperStyles} from '../Field/inputStyles.stylex';
 import {TestIcon} from '../__tests__/TestIcon';
 import {TextArea} from './TextArea';
 import {__resetLiveRegionsForTest} from '../hooks/useAnnounce';
@@ -188,6 +190,32 @@ describe('TextArea', () => {
     await user.tab();
     await user.tab();
     expect(screen.getByRole('textbox', {name: 'Second'})).toHaveFocus();
+  });
+
+  it('runs no caller handler from a disabled textarea and rings it under focus (spec:AST-085 FR2, FR6)', async () => {
+    const user = userEvent.setup();
+    const handlers = {onPaste: vi.fn(), onKeyDown: vi.fn()};
+    render(
+      <TextArea
+        label="Notes"
+        isDisabled
+        value=""
+        onChange={() => {}}
+        {...handlers}
+      />,
+    );
+    const textarea = screen.getByRole('textbox');
+    await user.click(textarea);
+    await user.keyboard('a');
+    await user.paste('x');
+    for (const handler of Object.values(handlers)) {
+      expect(handler).not.toHaveBeenCalled();
+    }
+    for (const name of stylex
+      .props(inputWrapperStyles.disabledFocus)
+      .className!.split(' ')) {
+      expect(textarea.parentElement).toHaveClass(name);
+    }
   });
 
   it('is not disabled by default', () => {

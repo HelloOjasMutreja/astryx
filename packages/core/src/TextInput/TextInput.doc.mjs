@@ -93,7 +93,7 @@ export const docs = {
       name: 'isReadOnly',
       type: 'boolean',
       description:
-        'Makes the input read-only: the value is shown at full opacity and still submits with the form, but cannot be edited. Unlike isDisabled, a read-only input is not dimmed and stays in the tab order. isDisabled takes precedence when both are set.',
+        'Makes the input read-only: the value is shown at full opacity and still submits with the form, but cannot be edited. Unlike isDisabled, a read-only input is not dimmed and keeps its form value. isDisabled takes precedence when both are set.',
       default: 'false',
     },
     {
@@ -489,7 +489,7 @@ export const docsDense = {
     isRequired: 'Shows "Required" indicator+sets aria-required. Mutually exclusive w/ isOptional.',
     isDisabled: 'Disables input, prevents interaction, dims element.',
     isReadOnly:
-      'Read-only: value visible + still submits, but not editable. Unlike isDisabled: not dimmed, stays in tab order.',
+      'Read-only: value visible + still submits, but not editable. Unlike isDisabled: not dimmed.',
     disabledMessage:
       'Explains why input is disabled. With isDisabled, shows tooltip on hover/focus + keeps input focusable via aria-disabled (field becomes read-only). Use instead of wrapping a disabled TextInput in Tooltip.',
     isLoading: 'Loading state w/ spinner+aria-busy.',

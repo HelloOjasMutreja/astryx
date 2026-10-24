@@ -13,6 +13,8 @@
 import {describe, it, expect, vi, beforeEach} from 'vitest';
 import {render, screen, fireEvent, waitFor} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import * as stylex from '@stylexjs/stylex';
+import {inputWrapperStyles} from '../Field/inputStyles.stylex';
 import {TestIcon} from '../__tests__/TestIcon';
 import {declaredValue} from '../__tests__/stylexDeclarations';
 import {InputGroup} from '../InputGroup';
@@ -158,6 +160,39 @@ describe('TextInput', () => {
     await user.tab();
     await user.tab();
     expect(screen.getByRole('textbox', {name: 'Second'})).toHaveFocus();
+  });
+
+  it('runs no caller handler and submits no form from a disabled input (spec:AST-085 FR2)', async () => {
+    const user = userEvent.setup();
+    const handlers = {onEnter: vi.fn(), onKeyDown: vi.fn(), onPaste: vi.fn()};
+    const onSubmit = vi.fn((e: React.FormEvent) => e.preventDefault());
+    render(
+      <form onSubmit={onSubmit}>
+        <TextInput
+          label="Name"
+          isDisabled
+          value=""
+          onChange={() => {}}
+          {...handlers}
+        />
+      </form>,
+    );
+    await user.click(screen.getByRole('textbox'));
+    await user.keyboard('{Enter}');
+    await user.paste('x');
+    for (const handler of [...Object.values(handlers), onSubmit]) {
+      expect(handler).not.toHaveBeenCalled();
+    }
+  });
+
+  it('rings a disabled input under keyboard focus (spec:AST-085 FR6)', () => {
+    render(<TextInput label="Name" isDisabled value="" onChange={() => {}} />);
+    const wrapper = screen.getByRole('textbox').parentElement!;
+    for (const name of stylex
+      .props(inputWrapperStyles.disabledFocus)
+      .className!.split(' ')) {
+      expect(wrapper).toHaveClass(name);
+    }
   });
 
   it('does not fire onChange when disabled', async () => {
