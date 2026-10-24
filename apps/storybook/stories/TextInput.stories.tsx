@@ -236,7 +236,7 @@ export const DescriptionWithOptional: Story = {
 };
 
 // Read-only shows a value the user should see and send but not change. Unlike
-// a disabled field it is not dimmed, stays in the tab order, and still submits.
+// a disabled field it is not dimmed and still submits.
 export const ReadOnly: Story = {
   render: args => {
     const [value, setValue] = useState(args.value ?? 'ACCT-4417-9920');
