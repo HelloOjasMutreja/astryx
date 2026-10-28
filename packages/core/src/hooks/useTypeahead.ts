@@ -61,6 +61,35 @@ export interface UseTypeaheadReturn {
   reset: () => void;
 }
 
+// Letters with a stroke or bar that Unicode does not decompose into a base
+// letter plus a combining mark, so folding by decomposition alone leaves them.
+const STROKED_LETTERS: Record<string, string> = {
+  '\u0111': 'd',
+  '\u00f0': 'd',
+  '\u0142': 'l',
+  '\u00f8': 'o',
+  '\u0127': 'h',
+};
+
+/**
+ * Lowercases `text` and drops accents, so a key typed without the mark reaches
+ * a label that starts with the marked letter ("d" finds "Đào", "a" finds
+ * "Ánh"). Only the combining diacritical marks block is stripped: voicing
+ * marks (か and が stay different letters) and Hangul syllables keep their
+ * identity, which is why the result is recomposed.
+ */
+function foldForMatch(text: string): string {
+  return text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .normalize('NFC')
+    .toLowerCase()
+    .replace(
+      /[\u0111\u00f0\u0142\u00f8\u0127]/g,
+      letter => STROKED_LETTERS[letter] ?? letter,
+    );
+}
+
 /**
  * Whether a key event represents a single printable character (a type-to-focus
  * candidate) rather than a control/navigation key or a shortcut chord.
@@ -94,7 +123,8 @@ function isComposingKey(e: React.KeyboardEvent | KeyboardEvent): boolean {
  * First-character ("type-ahead") search for a collection.
  *
  * Buffers printable keystrokes (resetting after `resetMs` of inactivity),
- * matches items whose label starts with the buffer, and cycles from the
+ * matches items whose label starts with the buffer (ignoring case and
+ * accents), and cycles from the
  * current index — so pressing "s" repeatedly walks through the "s" items
  * instead of sticking on the first. Space is reserved for activation and is
  * only treated as typeahead while a buffer is already active.
@@ -173,7 +203,7 @@ export function useTypeahead(options: UseTypeaheadOptions): UseTypeaheadReturn {
 
       // Pressing the SAME single character repeatedly cycles to the next match
       // rather than filtering deeper (APG behavior).
-      const char = e.key.toLowerCase();
+      const char = foldForMatch(e.key);
       const isRepeatSameChar =
         bufferRef.current.length > 0 &&
         bufferRef.current.split('').every(c => c === char);
@@ -200,7 +230,7 @@ export function useTypeahead(options: UseTypeaheadOptions): UseTypeaheadReturn {
         const label = labels[index];
         if (
           label != null &&
-          label.trim().toLowerCase().startsWith(nextBuffer)
+          foldForMatch(label.trim()).startsWith(nextBuffer)
         ) {
           onMatch(index);
           return true;

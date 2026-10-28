@@ -348,4 +348,51 @@ describe('useTypeahead', () => {
     expect(api.onKeyDown(synthetic)).toBe(false);
     expect(onMatch).not.toHaveBeenCalled();
   });
+
+  describe('accents and stroked letters', () => {
+    function setupLabels(labels: ReadonlyArray<string>, current = -1) {
+      const onMatch = vi.fn();
+      const {result} = renderHook(() =>
+        useTypeahead({
+          getItemLabels: () => labels,
+          onMatch,
+          getCurrentIndex: () => current,
+        }),
+      );
+      return {onMatch, api: result.current};
+    }
+
+    it('matches a base letter against an accented first letter', () => {
+      const {onMatch, api} = setupLabels(['Anh', 'Dung', 'Đào', 'Ánh']);
+      api.onKeyDown(key('d'));
+      expect(onMatch).toHaveBeenLastCalledWith(1); // Dung
+      const second = setupLabels(['Dung', 'Đào'], 0);
+      second.api.onKeyDown(key('d'));
+      expect(second.onMatch).toHaveBeenLastCalledWith(1); // Đào
+    });
+
+    it('matches decomposed labels and a typed accent against the base letter', () => {
+      const decomposed = setupLabels(['Bob', 'Ánh']);
+      decomposed.api.onKeyDown(key('a'));
+      expect(decomposed.onMatch).toHaveBeenLastCalledWith(1);
+      const typed = setupLabels(['Bob', 'Ángel']);
+      typed.api.onKeyDown(key('á'));
+      expect(typed.onMatch).toHaveBeenLastCalledWith(1);
+    });
+
+    it('folds letters Unicode does not decompose (ł, ø)', () => {
+      const {onMatch, api} = setupLabels(['Anna', 'Łukasz']);
+      api.onKeyDown(key('l'));
+      expect(onMatch).toHaveBeenLastCalledWith(1);
+      const nordic = setupLabels(['Eva', 'Øystein']);
+      nordic.api.onKeyDown(key('o'));
+      expect(nordic.onMatch).toHaveBeenLastCalledWith(1);
+    });
+
+    it('keeps letters that differ only by a mark outside the diacritics block distinct', () => {
+      const {onMatch, api} = setupLabels(['がく', 'かい']);
+      api.onKeyDown(key('か'));
+      expect(onMatch).toHaveBeenLastCalledWith(1);
+    });
+  });
 });
