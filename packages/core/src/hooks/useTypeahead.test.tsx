@@ -413,6 +413,31 @@ describe('useTypeahead', () => {
       expect(swedish.onMatch).toHaveBeenLastCalledWith(2); // Axel, not Åsa
     });
 
+    it('keeps a combining mark typed after a letter (Thai tone mark, Devanagari anusvara)', () => {
+      const typeAll = (
+        labels: ReadonlyArray<string>,
+        keys: ReadonlyArray<string>,
+      ) => {
+        const {onMatch, api} = setupLabels(labels);
+        keys.forEach(k => api.onKeyDown(key(k)));
+        return onMatch.mock.calls.at(-1)?.[0];
+      };
+      // ตั้ง over ตัด and ตั้งค่า: the tone mark tells them apart.
+      expect(
+        typeAll(
+          ['วาง', 'ตัด', 'ตั้งค่า'],
+          ['ต', String.fromCharCode(0x0e31), String.fromCharCode(0xe49), 'ง'],
+        ),
+      ).toBe(2);
+      // हिंद over हिम and हिंदी: the anusvara tells them apart.
+      expect(
+        typeAll(
+          ['हिम', 'हिंदी'],
+          ['ह', String.fromCharCode(0x93f), String.fromCharCode(0x902), 'द'],
+        ),
+      ).toBe(1);
+    });
+
     it('ignores a key that is only a combining mark', () => {
       const {onMatch, api} = setupLabels(['Anna', 'Bob']);
       expect(api.onKeyDown(key(String.fromCharCode(0x301)))).toBe(false);

@@ -177,9 +177,16 @@ export function useTypeahead(options: UseTypeaheadOptions): UseTypeaheadReturn {
         return false;
       }
 
-      // A lone combining mark compares equal to the empty string, so it would
-      // match every label. It is not a letter to jump to.
-      if (e.key !== ' ' && collator.compare(e.key, '') === 0) {
+      // A lone combining mark compares equal to the empty string, so as the
+      // first key it would match every label. It is not a letter to jump to.
+      // Once a letter is buffered the mark is part of what is being typed (a
+      // Thai tone mark, a Devanagari anusvara), and the label is cut by the
+      // same count.
+      if (
+        bufferRef.current.length === 0 &&
+        e.key !== ' ' &&
+        collator.compare(e.key, '') === 0
+      ) {
         return false;
       }
 
