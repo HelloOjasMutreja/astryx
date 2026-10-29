@@ -415,7 +415,7 @@ describe('useTypeahead', () => {
 
     it('ignores a key that is only a combining mark', () => {
       const {onMatch, api} = setupLabels(['Anna', 'Bob']);
-      expect(api.onKeyDown(key('0301'))).toBe(false);
+      expect(api.onKeyDown(key(String.fromCharCode(0x301)))).toBe(false);
       expect(onMatch).not.toHaveBeenCalled();
     });
   });
