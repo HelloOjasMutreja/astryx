@@ -12,6 +12,7 @@
 import {describe, it, expect, vi, beforeEach, afterEach} from 'vitest';
 import {Activity, type ReactNode} from 'react';
 import {render, renderHook} from '@testing-library/react';
+import {InternationalizationProvider} from '../i18n/InternationalizationProvider';
 import {useTypeahead} from './useTypeahead';
 
 const LABELS = ['Apple', 'Apricot', 'Banana', 'Cherry'] as const;
@@ -350,14 +351,28 @@ describe('useTypeahead', () => {
   });
 
   describe('accents and stroked letters', () => {
-    function setupLabels(labels: ReadonlyArray<string>, current = -1) {
+    function setupLabels(
+      labels: ReadonlyArray<string>,
+      current = -1,
+      locale?: string,
+    ) {
       const onMatch = vi.fn();
-      const {result} = renderHook(() =>
-        useTypeahead({
-          getItemLabels: () => labels,
-          onMatch,
-          getCurrentIndex: () => current,
-        }),
+      const {result} = renderHook(
+        () =>
+          useTypeahead({
+            getItemLabels: () => labels,
+            onMatch,
+            getCurrentIndex: () => current,
+          }),
+        locale == null
+          ? undefined
+          : {
+              wrapper: ({children}: {children: ReactNode}) => (
+                <InternationalizationProvider locale={locale}>
+                  {children}
+                </InternationalizationProvider>
+              ),
+            },
       );
       return {onMatch, api: result.current};
     }
@@ -389,10 +404,19 @@ describe('useTypeahead', () => {
       expect(nordic.onMatch).toHaveBeenLastCalledWith(1);
     });
 
-    it('keeps letters that differ only by a mark outside the diacritics block distinct', () => {
-      const {onMatch, api} = setupLabels(['がく', 'かい']);
-      api.onKeyDown(key('か'));
-      expect(onMatch).toHaveBeenLastCalledWith(1);
+    it('follows the provider locale for letters that are separate in that language', () => {
+      const spanish = setupLabels(['Ana', 'Ñandú', 'Nora'], -1, 'es-ES');
+      spanish.api.onKeyDown(key('n'));
+      expect(spanish.onMatch).toHaveBeenLastCalledWith(2); // Nora, not Ñandú
+      const swedish = setupLabels(['Anna', 'Åsa', 'Axel'], 0, 'sv-SE');
+      swedish.api.onKeyDown(key('a'));
+      expect(swedish.onMatch).toHaveBeenLastCalledWith(2); // Axel, not Åsa
+    });
+
+    it('ignores a key that is only a combining mark', () => {
+      const {onMatch, api} = setupLabels(['Anna', 'Bob']);
+      expect(api.onKeyDown(key('0301'))).toBe(false);
+      expect(onMatch).not.toHaveBeenCalled();
     });
   });
 });

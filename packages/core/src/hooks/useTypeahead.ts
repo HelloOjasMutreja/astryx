@@ -4,7 +4,7 @@
 
 /**
  * @file useTypeahead.ts
- * @input Uses React useCallback/useEffect/useRef
+ * @input Uses React useCallback/useEffect/useRef, useCollator (provider locale)
  * @output Exports useTypeahead hook for first-character (type-to-focus) search
  * @position Core hook; adds APG typeahead to menus, listboxes, and other
  *   collections. Composes with useListFocus/useGridFocus (or any collection)
@@ -14,7 +14,8 @@
  * - /packages/core/src/hooks/index.ts
  */
 
-import {useCallback, useEffect, useRef} from 'react';
+import {useCallback, useEffect, useMemo, useRef} from 'react';
+import {useCollator} from '../i18n';
 
 export interface UseTypeaheadOptions {
   /**
@@ -59,35 +60,6 @@ export interface UseTypeaheadReturn {
   onKeyDown: (e: React.KeyboardEvent | KeyboardEvent) => boolean;
   /** Clear the pending buffer (e.g. on close). */
   reset: () => void;
-}
-
-// Letters with a stroke or bar that Unicode does not decompose into a base
-// letter plus a combining mark, so folding by decomposition alone leaves them.
-const STROKED_LETTERS: Record<string, string> = {
-  '\u0111': 'd',
-  '\u00f0': 'd',
-  '\u0142': 'l',
-  '\u00f8': 'o',
-  '\u0127': 'h',
-};
-
-/**
- * Lowercases `text` and drops accents, so a key typed without the mark reaches
- * a label that starts with the marked letter ("d" finds "Đào", "a" finds
- * "Ánh"). Only the combining diacritical marks block is stripped: voicing
- * marks (か and が stay different letters) and Hangul syllables keep their
- * identity, which is why the result is recomposed.
- */
-function foldForMatch(text: string): string {
-  return text
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .normalize('NFC')
-    .toLowerCase()
-    .replace(
-      /[\u0111\u00f0\u0142\u00f8\u0127]/g,
-      letter => STROKED_LETTERS[letter] ?? letter,
-    );
 }
 
 /**
@@ -152,6 +124,15 @@ export function useTypeahead(options: UseTypeaheadOptions): UseTypeaheadReturn {
     isDisabled,
   } = options;
 
+  // Base-strength search collation ignores case and accents, and follows the
+  // provider locale: in Spanish "n" does not match "ñ", in Swedish "a" does
+  // not match "å".
+  const collatorOptions = useMemo<Intl.CollatorOptions>(
+    () => ({sensitivity: 'base', usage: 'search'}),
+    [],
+  );
+  const collator = useCollator(collatorOptions);
+
   const bufferRef = useRef('');
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined,
@@ -196,6 +177,12 @@ export function useTypeahead(options: UseTypeaheadOptions): UseTypeaheadReturn {
         return false;
       }
 
+      // A lone combining mark compares equal to the empty string, so it would
+      // match every label. It is not a letter to jump to.
+      if (e.key !== ' ' && collator.compare(e.key, '') === 0) {
+        return false;
+      }
+
       const labels = getItemLabels();
       if (labels.length === 0) {
         return false;
@@ -203,10 +190,10 @@ export function useTypeahead(options: UseTypeaheadOptions): UseTypeaheadReturn {
 
       // Pressing the SAME single character repeatedly cycles to the next match
       // rather than filtering deeper (APG behavior).
-      const char = foldForMatch(e.key);
+      const char = e.key;
       const isRepeatSameChar =
         bufferRef.current.length > 0 &&
-        bufferRef.current.split('').every(c => c === char);
+        bufferRef.current.split('').every(c => collator.compare(c, char) === 0);
       const nextBuffer = isRepeatSameChar ? char : bufferRef.current + char;
       bufferRef.current = nextBuffer;
       scheduleReset();
@@ -230,7 +217,10 @@ export function useTypeahead(options: UseTypeaheadOptions): UseTypeaheadReturn {
         const label = labels[index];
         if (
           label != null &&
-          foldForMatch(label.trim()).startsWith(nextBuffer)
+          collator.compare(
+            label.trim().normalize('NFC').slice(0, nextBuffer.length),
+            nextBuffer,
+          ) === 0
         ) {
           onMatch(index);
           return true;
@@ -238,7 +228,14 @@ export function useTypeahead(options: UseTypeaheadOptions): UseTypeaheadReturn {
       }
       return true;
     },
-    [getItemLabels, onMatch, getCurrentIndex, scheduleReset, isDisabled],
+    [
+      getItemLabels,
+      onMatch,
+      getCurrentIndex,
+      scheduleReset,
+      isDisabled,
+      collator,
+    ],
   );
 
   return {onKeyDown, reset};
