@@ -358,6 +358,45 @@ describe('NumberInput', () => {
       expect(input).toHaveAttribute('aria-valuenow', '1234');
     });
 
+    it('keeps the whole text selected when focus arrives with it selected, as Tab does', () => {
+      render(
+        <NumberInput
+          label="Amount"
+          value={1500000}
+          onChange={() => {}}
+          formatValue={number => number.toLocaleString('en-US')}
+        />,
+      );
+      const input = screen.getByRole('spinbutton');
+      expect(input).toHaveValue('1,500,000');
+
+      // Tab into a text field selects its text before the focus event.
+      input.focus();
+      input.setSelectionRange(0, input.value.length);
+      fireEvent.focus(input);
+
+      // The editable text replaces the formatted text, and stays selected.
+      expect(input).toHaveValue('1500000');
+      expect(input.selectionStart).toBe(0);
+      expect(input.selectionEnd).toBe('1500000'.length);
+    });
+
+    it('leaves the caret where a click put it', () => {
+      render(
+        <NumberInput
+          label="Amount"
+          value={1500000}
+          onChange={() => {}}
+          formatValue={number => number.toLocaleString('en-US')}
+        />,
+      );
+      const input = screen.getByRole('spinbutton');
+      input.focus();
+      input.setSelectionRange(3, 3);
+      fireEvent.focus(input);
+      expect(input.selectionStart).toBe(input.selectionEnd);
+    });
+
     it('keeps ARIA value text on the committed value while an edit is pending', () => {
       function ControlledNumberInput() {
         const [controlledValue, setControlledValue] = useState(1234);
