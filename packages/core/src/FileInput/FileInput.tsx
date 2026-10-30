@@ -562,6 +562,30 @@ export function FileInput({
       .filter(Boolean)
       .join(' ') || undefined;
 
+  // The native input keeps taking the caller's base props (the shared FR10
+  // contract), but it is `aria-hidden` and never focused, so a caller's
+  // `aria-*` props are also set on the trigger, the field's focusable control,
+  // where assistive tech reads them. The ones the trigger composes itself are
+  // not copied, and a caller's description is joined to its own, first.
+  const {
+    'aria-describedby': callerDescribedBy,
+    'aria-label': _callerLabel,
+    'aria-labelledby': _callerLabelledBy,
+    'aria-hidden': _callerHidden,
+    'aria-disabled': _callerDisabled,
+    'aria-busy': _callerBusy,
+    'aria-invalid': _callerInvalid,
+    ...otherRest
+  } = rest as typeof rest & Record<string, string | undefined>;
+  const triggerAriaProps: Record<string, string> = {};
+  for (const [key, value] of Object.entries(otherRest)) {
+    if (key.startsWith('aria-') && typeof value === 'string') {
+      triggerAriaProps[key] = value;
+    }
+  }
+  const triggerDescribedBy =
+    [callerDescribedBy, ariaDescribedBy].filter(Boolean).join(' ') || undefined;
+
   const defaultPlaceholder = isMultiple
     ? t('@astryx.fileInput.placeholderMultiple')
     : t('@astryx.fileInput.placeholder');
@@ -907,8 +931,9 @@ export function FileInput({
                 : label
             }
             aria-busy={isBusy || undefined}
-            aria-describedby={ariaDescribedBy}
             aria-invalid={status?.type === 'error' ? 'true' : undefined}
+            {...triggerAriaProps}
+            aria-describedby={triggerDescribedBy}
           />
         </VisuallyHidden>
         <input

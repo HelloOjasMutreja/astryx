@@ -257,6 +257,43 @@ describe('FileInput', () => {
     expect(input).toHaveAttribute('aria-hidden', 'true');
   });
 
+  it("joins a caller's aria-describedby to the trigger's own description", () => {
+    render(
+      <>
+        <p id="hint">Up to 10 MB</p>
+        <FileInput
+          label="Report"
+          description="PDF only"
+          aria-describedby="hint"
+          value={null}
+          onChange={() => {}}
+        />
+      </>,
+    );
+    const trigger = screen.getByRole('button', {name: 'Report'});
+    expect(trigger).toHaveAccessibleDescription('Up to 10 MB PDF only');
+  });
+
+  it("puts a caller's other aria-* props on the trigger, and keeps the ones it manages", () => {
+    render(
+      <FileInput
+        label="Report"
+        aria-details="details"
+        aria-label="Ignored"
+        value={null}
+        onChange={() => {}}
+      />,
+    );
+    const trigger = screen.getByRole('button', {name: 'Report'});
+    expect(trigger).toHaveAttribute('aria-details', 'details');
+    expect(trigger).toHaveAttribute('aria-label', 'Report');
+    // The hidden input is still aria-hidden, whatever props it takes.
+    expect(document.querySelector('input[type="file"]')).toHaveAttribute(
+      'aria-hidden',
+      'true',
+    );
+  });
+
   it('does not mention required without isRequired', () => {
     render(<FileInput label="Resume" value={null} onChange={() => {}} />);
     const trigger = screen.getByRole('button', {name: 'Resume'});
