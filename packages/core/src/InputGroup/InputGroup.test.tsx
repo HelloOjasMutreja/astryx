@@ -9,7 +9,7 @@
  * SYNC: When InputGroup component changes, update tests to match new behavior
  */
 
-import {describe, it, expect} from 'vitest';
+import {afterEach, describe, it, expect, vi} from 'vitest';
 import {render, screen} from '@testing-library/react';
 import {InputGroup} from './InputGroup';
 import {InputGroupText} from './InputGroupText';
@@ -35,6 +35,10 @@ const fruitSource: SearchSource = {
 };
 
 describe('InputGroup', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it('names the group via the label element (forms-14)', () => {
     render(
       <InputGroup label="Price">
@@ -546,6 +550,46 @@ describe('InputGroup', () => {
         'aria-invalid',
         'true',
       );
+    });
+
+    it.each([
+      [
+        'native DateInput',
+        <DateInput label="Due" presentation="native" onChange={() => {}} />,
+        'input[type="date"]',
+      ],
+      [
+        'bottom-sheet DateInput',
+        <DateInput
+          label="Due"
+          presentation="bottom-sheet"
+          onChange={() => {}}
+        />,
+        'input[aria-haspopup="dialog"]',
+      ],
+      [
+        'native TimeInput',
+        <TimeInput label="Start" presentation="native" onChange={() => {}} />,
+        'input[type="time"]',
+      ],
+    ])('marks a %s invalid too', (_name, member, selector) => {
+      // The sheet surface observes its size; jsdom has no ResizeObserver.
+      vi.stubGlobal(
+        'ResizeObserver',
+        class {
+          observe() {}
+          unobserve() {}
+          disconnect() {}
+        },
+      );
+      const {container} = render(
+        <InputGroup label="Schedule" status={{type: 'error', message: 'Bad'}}>
+          {member}
+        </InputGroup>,
+      );
+      const control = container.querySelector(selector);
+      expect(control).not.toBeNull();
+      expect(control).toHaveAttribute('aria-invalid', 'true');
     });
 
     it('leaves members valid when the group has no error', () => {

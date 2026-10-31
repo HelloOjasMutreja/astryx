@@ -812,7 +812,9 @@ function TimeField({
           isFocusableDisabled
           isEffectivelyRequired={isEffectivelyRequired}
           isBusy={isBusy}
-          statusType={status?.type}
+          statusType={
+            isStatusInvalid(status, inputGroup) ? 'error' : status?.type
+          }
           ariaDescribedBy={ariaDescribedBy}
           controlProps={{
             ...controlProps,
