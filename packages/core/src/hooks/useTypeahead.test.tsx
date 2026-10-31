@@ -438,6 +438,22 @@ describe('useTypeahead', () => {
       ).toBe(1);
     });
 
+    it('counts an accent typed as its own key as one letter, and matches decomposed labels', () => {
+      const typeAll = (
+        labels: ReadonlyArray<string>,
+        keys: ReadonlyArray<string>,
+      ) => {
+        const {onMatch, api} = setupLabels(labels);
+        keys.forEach(k => api.onKeyDown(key(k)));
+        return onMatch.mock.calls.at(-1)?.[0];
+      };
+      const acute = String.fromCharCode(0x301);
+      // a, U+0301, n over a composed label.
+      expect(typeAll(['Ada', 'Ánh'], ['a', acute, 'n'])).toBe(1);
+      // The same over a label stored decomposed (A, U+0301, n, h).
+      expect(typeAll(['Ada', 'A' + acute + 'nh'], ['a', acute, 'n'])).toBe(1);
+    });
+
     it('ignores a key that is only a combining mark', () => {
       const {onMatch, api} = setupLabels(['Anna', 'Bob']);
       expect(api.onKeyDown(key(String.fromCharCode(0x301)))).toBe(false);

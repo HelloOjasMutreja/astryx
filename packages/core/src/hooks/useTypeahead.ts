@@ -215,6 +215,9 @@ export function useTypeahead(options: UseTypeaheadOptions): UseTypeaheadReturn {
       // Once the buffer is longer it is refining a match, so the current item
       // stays in range. With nothing current there is nothing to advance past.
       const offset = hasCurrent && nextBuffer.length === 1 ? 1 : 0;
+      // The label is composed, so the buffer is too: an accent typed as its
+      // own key (a, U+0301) must count as one letter, as it does in the label.
+      const composedBuffer = nextBuffer.normalize('NFC');
 
       for (let i = 0; i < count; i++) {
         const index = (start + offset + i + count) % count;
@@ -225,8 +228,8 @@ export function useTypeahead(options: UseTypeaheadOptions): UseTypeaheadReturn {
         if (
           label != null &&
           collator.compare(
-            label.trim().normalize('NFC').slice(0, nextBuffer.length),
-            nextBuffer,
+            label.trim().normalize('NFC').slice(0, composedBuffer.length),
+            composedBuffer,
           ) === 0
         ) {
           onMatch(index);
