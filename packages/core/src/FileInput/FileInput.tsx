@@ -576,15 +576,18 @@ export function FileInput({
     'aria-busy': _callerBusy,
     'aria-invalid': _callerInvalid,
     ...otherRest
-  } = rest as typeof rest & Record<string, string | undefined>;
-  const triggerAriaProps: Record<string, string> = {};
+  } = rest as typeof rest & Record<string, unknown>;
+  const triggerAriaProps: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(otherRest)) {
-    if (key.startsWith('aria-') && typeof value === 'string') {
+    // Booleans and numbers are valid ARIA values too: React serializes them.
+    if (key.startsWith('aria-') && value != null) {
       triggerAriaProps[key] = value;
     }
   }
   const triggerDescribedBy =
-    [callerDescribedBy, ariaDescribedBy].filter(Boolean).join(' ') || undefined;
+    [callerDescribedBy, ariaDescribedBy]
+      .filter(Boolean)
+      .join(' ') || undefined;
 
   const defaultPlaceholder = isMultiple
     ? t('@astryx.fileInput.placeholderMultiple')

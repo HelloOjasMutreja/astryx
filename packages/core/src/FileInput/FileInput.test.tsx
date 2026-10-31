@@ -279,6 +279,8 @@ describe('FileInput', () => {
       <FileInput
         label="Report"
         aria-details="details"
+        aria-expanded={false}
+        aria-posinset={1}
         aria-label="Ignored"
         value={null}
         onChange={() => {}}
@@ -286,6 +288,9 @@ describe('FileInput', () => {
     );
     const trigger = screen.getByRole('button', {name: 'Report'});
     expect(trigger).toHaveAttribute('aria-details', 'details');
+    // Booleans and numbers reach the trigger too.
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    expect(trigger).toHaveAttribute('aria-posinset', '1');
     expect(trigger).toHaveAttribute('aria-label', 'Report');
     // The hidden input is still aria-hidden, whatever props it takes.
     expect(document.querySelector('input[type="file"]')).toHaveAttribute(
