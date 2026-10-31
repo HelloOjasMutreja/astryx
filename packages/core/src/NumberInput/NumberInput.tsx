@@ -729,14 +729,20 @@ export function NumberInput({
   const handleFocus = useCallback(
     (e: FocusEvent<HTMLInputElement>) => {
       const input = e.currentTarget;
+      // Only when focusing swaps the text: otherwise no render follows to
+      // consume the flag, and the first keystroke would.
+      const editableText =
+        pendingInput ??
+        (value == null ? '' : formatEditableNumber(value, locale));
       reselectOnFocusRef.current =
         input.value.length > 0 &&
+        input.value !== editableText &&
         input.selectionStart === 0 &&
         input.selectionEnd === input.value.length;
       setIsFocused(true);
       onFocus?.(e);
     },
-    [onFocus],
+    [onFocus, pendingInput, value, locale],
   );
 
   useLayoutEffect(() => {
